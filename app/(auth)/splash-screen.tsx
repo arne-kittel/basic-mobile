@@ -9,7 +9,7 @@ export default function SignIn() {
   return (
     <SafeAreaView className='flex-1 bg-white'>
       <VStack
-        className='p-4 w-full items-center h-full justify-center'
+        className='p-9 w-full items-center h-full justify-center'
         space='lg'>
           <VStack
             className='w-full'
@@ -18,7 +18,7 @@ export default function SignIn() {
               className='w-full'
               variant='solid'
               size='lg'
-              onPress={() => useRouter().push('/(auth)/sign-in')}
+              onPress={() => useRouter().push('/(auth)/signin')}
             >
               <ButtonText className='font-medium'>Login</ButtonText>
             </Button>
@@ -26,7 +26,7 @@ export default function SignIn() {
               className='w-full'
               variant='solid'
               size='lg'
-              onPress={() => useRouter().push('/(auth)/sign-up')}
+              onPress={() => useRouter().push('/(auth)/signup')}
             >
               <ButtonText className='font-medium'>Sign Up</ButtonText>
             </Button>
