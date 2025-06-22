@@ -105,17 +105,6 @@ const CreatePasswordWithLeftBackground = () => {
   return (
     <VStack className="p-9 max-w-[440px] w-full" space="md">
       <VStack className="md:items-center" space="md">
-        <Pressable
-          onPress={() => {
-            router.back();
-          }}
-        >
-          <Icon
-            as={ArrowLeftIcon}
-            className="md:hidden stroke-background-800"
-            size="xl"
-          />
-        </Pressable>
         <VStack>
           <Heading className="md:text-center" size="3xl">
             Create new password

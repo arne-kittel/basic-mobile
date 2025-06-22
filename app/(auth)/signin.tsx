@@ -117,17 +117,6 @@ const LoginWithLeftBackground = () => {
   return (
     <VStack className="p-9 pb-5 max-w-[440px] w-full bg-white" space="md">
       <VStack className="md:items-center" space="md">
-        <Pressable
-          onPress={() => {
-            router.back();
-          }}
-        >
-          <Icon
-            as={ArrowLeftIcon}
-            className="md:hidden text-background-800"
-            size="xl"
-          />
-        </Pressable>
         <VStack>
           <Heading className="md:text-center" size="3xl">
             Log in

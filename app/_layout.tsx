@@ -60,7 +60,7 @@ function RootLayoutNav() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           </Stack.Protected>
           <Stack.Protected guard={!isLoggedIn}>
-            <Stack.Screen name="(auth)/splash-screen" options={{ headerShown: true }} />
+            <Stack.Screen name="(auth)/splash-screen" options={{ headerShown: false }} />
           </Stack.Protected>
         </Stack>
       </ThemeProvider>
