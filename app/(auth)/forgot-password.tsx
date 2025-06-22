@@ -27,7 +27,7 @@ const forgotPasswordSchema = z.object({
 
 type forgotPasswordSchemaType = z.infer<typeof forgotPasswordSchema>;
 
-const ForgotPasswordScreen = () => {
+export default function ForgotPassword() {
   const {
     control,
     handleSubmit,
@@ -114,11 +114,5 @@ const ForgotPasswordScreen = () => {
         </Button>
       </VStack>
     </VStack>
-  );
-};
-
-export default function ForgotPassword() {
-  return (
-      <ForgotPasswordScreen />
   );
 };

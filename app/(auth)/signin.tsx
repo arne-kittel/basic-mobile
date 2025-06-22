@@ -61,7 +61,7 @@ const loginSchema = z.object({
 
 type LoginSchemaType = z.infer<typeof loginSchema>;
 
-const LoginWithLeftBackground = () => {
+export default function SignIn() {
   const {
     control,
     handleSubmit,
@@ -257,11 +257,5 @@ const LoginWithLeftBackground = () => {
         </HStack>
       </VStack>
     </VStack>
-  );
-};
-
-export default function SignIn() {
-  return (
-    <LoginWithLeftBackground />
   );
 };

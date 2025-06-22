@@ -63,7 +63,7 @@ const signUpSchema = z.object({
 });
 type SignUpSchemaType = z.infer<typeof signUpSchema>;
 
-const SignUpWithLeftBackground = () => {
+export default function SignUp() {
   const {
     control,
     handleSubmit,
@@ -305,11 +305,5 @@ const SignUpWithLeftBackground = () => {
         </HStack>
       </VStack>
     </VStack>
-  );
-};
-
-export default function SignUp() {
-  return (
-    <SignUpWithLeftBackground />
   );
 };

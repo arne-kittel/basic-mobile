@@ -47,7 +47,7 @@ const createPasswordSchema = z.object({
 
 type CreatePasswordSchemaType = z.infer<typeof createPasswordSchema>;
 
-const CreatePasswordWithLeftBackground = () => {
+export default function CreatePassword() {
   const {
     control,
     handleSubmit,
@@ -228,11 +228,5 @@ const CreatePasswordWithLeftBackground = () => {
         </VStack>
       </VStack>
     </VStack>
-  );
-};
-
-export default function CreatePassword() {
-  return (
-      <CreatePasswordWithLeftBackground />
   );
 };
