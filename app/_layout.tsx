@@ -44,7 +44,7 @@ export default function RootLayout() {
     return null;
   }
 
-  return <GluestackUIProvider mode="light"><RootLayoutNav /></GluestackUIProvider>;
+  return <RootLayoutNav />;
 }
 
 const isLoggedIn = true; // Replace with your authentication logic
@@ -53,7 +53,8 @@ function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
   return (
-    <GluestackUIProvider mode="light"><ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <GluestackUIProvider mode={(colorScheme ?? "light") as "light" | "dark"}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>
           <Stack.Protected guard={isLoggedIn}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -62,6 +63,7 @@ function RootLayoutNav() {
             <Stack.Screen name="(auth)/signin" options={{ headerShown: true }} />
           </Stack.Protected>
         </Stack>
-      </ThemeProvider></GluestackUIProvider>
+      </ThemeProvider>
+    </GluestackUIProvider>
   );
 }
