@@ -47,7 +47,7 @@ export default function RootLayout() {
   return <RootLayoutNav />;
 }
 
-const isLoggedIn = true; // Replace with your authentication logic
+const isLoggedIn = false; // Replace with your authentication logic
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
@@ -60,7 +60,7 @@ function RootLayoutNav() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           </Stack.Protected>
           <Stack.Protected guard={!isLoggedIn}>
-            <Stack.Screen name="(auth)/signin" options={{ headerShown: true }} />
+            <Stack.Screen name="(auth)/splash-screen" options={{ headerShown: true }} />
           </Stack.Protected>
         </Stack>
       </ThemeProvider>
