@@ -47,7 +47,7 @@ export default function RootLayout() {
   return <RootLayoutNav />;
 }
 
-const isLoggedIn = false; // Replace with your authentication logic
+const isLoggedIn = true; // Replace with your authentication logic
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
