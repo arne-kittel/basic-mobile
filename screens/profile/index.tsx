@@ -232,7 +232,7 @@ const MainContent = () => {
   const [showModal, setShowModal] = useState(false);
 
   return (
-    <VStack className="md:items-center md:justify-center flex-1 w-full  p-6 md:gap-10 gap-16 md:m-auto md:w-1/2 h-full">
+    <VStack className="md:items-center md:justify-center flex-1 w-full  p-6 md:gap-10 gap-16 md:m-auto md:w-1/2 h-full bg-white">
       <ModalComponent showModal={showModal} setShowModal={setShowModal} />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -333,10 +333,10 @@ const MainContent = () => {
             <Heading className="font-roboto" size="xl">
               Account
             </Heading>
-            <VStack className="py-2 px-4 border rounded-xl border-outline-300 justify-between items-center bg-white">
+            <VStack className="py-2 px-4 border rounded-xl border-outline-300 justify-between items-center">
               <HStack
                 space="2xl"
-                className="justify-between items-center w-full flex-1 py-4 px-2 bg-error-50"
+                className="justify-between items-center w-full flex-1 py-4 px-2"
               >
                 <HStack className="items-center" space="md">
                   <Icon as={ProfileIcon} className="stroke-[#747474]" />
@@ -347,7 +347,7 @@ const MainContent = () => {
               <Divider className="my-1" />
               <HStack
                 space="2xl"
-                className="justify-between items-center w-full flex-1 py-4 px-2 bg-error-50"
+                className="justify-between items-center w-full flex-1 py-4 px-2"
               >
                 <HStack className="items-center" space="md">
                   <Icon as={ProfileIcon} className="stroke-[#747474]" />
@@ -358,7 +358,7 @@ const MainContent = () => {
               <Divider className="my-1" />
               <HStack
                 space="2xl"
-                className="justify-between items-center w-full flex-1 py-4 px-2 bg-error-50"
+                className="justify-between items-center w-full flex-1 py-4 px-2"
               >
                 <HStack className="items-center" space="md">
                   <Icon as={ProfileIcon} className="stroke-[#747474]" />
