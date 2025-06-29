@@ -249,55 +249,12 @@ const MainContent = () => {
               </Avatar>
               <VStack className="gap-1 w-full items-center">
                 <Text size="2xl" className="font-roboto text-dark">
-                  Alexander Leslie
+                  Arne Kittel
                 </Text>
                 <Text className="font-roboto text-sm text-typograpphy-700">
-                  United States
+                  # 000000001
                 </Text>
               </VStack>
-              <>
-                {userData.map((item, index) => {
-                  return (
-                    <HStack className="items-center gap-1" key={index}>
-                      <VStack className="py-3 px-4 items-center" space="xs">
-                        <Text className="text-dark font-roboto font-semibold justify-center items-center">
-                          {item.friends}
-                        </Text>
-                        <Text className="text-dark text-xs font-roboto">
-                          {item.friendsText}
-                        </Text>
-                      </VStack>
-                      <Divider orientation="vertical" className="h-10" />
-                      <VStack className="py-3 px-4 items-center" space="xs">
-                        <Text className="text-dark font-roboto font-semibold">
-                          {item.followers}
-                        </Text>
-                        <Text className="text-dark text-xs font-roboto">
-                          {item.followersText}
-                        </Text>
-                      </VStack>
-                      <Divider orientation="vertical" className="h-10" />
-                      <VStack className="py-3 px-4 items-center" space="xs">
-                        <Text className="text-dark font-roboto font-semibold">
-                          {item.rewards}
-                        </Text>
-                        <Text className="text-dark text-xs font-roboto">
-                          {item.rewardsText}
-                        </Text>
-                      </VStack>
-                      <Divider orientation="vertical" className="h-10" />
-                      <VStack className="py-3 px-4 items-center" space="xs">
-                        <Text className="text-dark font-roboto font-semibold">
-                          {item.posts}
-                        </Text>
-                        <Text className="text-dark text-xs font-roboto">
-                          {item.postsText}
-                        </Text>
-                      </VStack>
-                    </HStack>
-                  );
-                })}
-              </>
               <Button
                 variant="outline"
                 action="secondary"
@@ -317,15 +274,15 @@ const MainContent = () => {
               <HStack space="2xl" className="items-center">
                 <VStack>
                   <Text className="text-typography-900 text-lg" size="lg">
-                    Invite & get rewards
+                    Your referral code
                   </Text>
                   <Text className="font-roboto text-sm md:text-[16px]">
-                    Your code r45dAsdeK8
+                    #000000001
                   </Text>
                 </VStack>
               </HStack>
-              <Button className="p-0 md:py-2 md:px-4 bg-background-0 active:bg-background-0 md:bg-background-900 ">
-                <ButtonText className="md:text-typography-0 text-typography-800 text-sm">
+              <Button className="px-3" variant="solid">
+                <ButtonText className="font-medium">
                   Invite
                 </ButtonText>
               </Button>
