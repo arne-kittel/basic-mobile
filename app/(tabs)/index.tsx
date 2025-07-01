@@ -37,7 +37,7 @@ const BLOGS_DATA: BlogData[] = [
   },
 ];
 
-export default function EventFeed () {
+export default function EventFeed() {
   return (
     <VStack className='p-4 pb-0 md:px-10 md:pt-6 md:pb-0 h-full w-full self-center mb-20 md:mb-2 bg-white'>
       <Heading size='2xl' className='mb-4 font-roboto'>
