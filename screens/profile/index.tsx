@@ -77,6 +77,10 @@ import {
 import { CameraSparklesIcon } from "./assets/icons/camera-sparkles";
 import { EditPhotoIcon } from "./assets/icons/edit-photo";
 import { isWeb } from "@gluestack-ui/nativewind-utils/IsWeb";
+import { B } from "@expo/html-elements";
+
+import { useContext } from "react";
+import { AuthContext } from "@/context/AuthContext";
 
 type MobileHeaderProps = {
   title: string;
@@ -230,6 +234,7 @@ const accountData: AccountCardType[] = [
 ];
 const MainContent = () => {
   const [showModal, setShowModal] = useState(false);
+  const { logOut } = useContext(AuthContext);
 
   return (
     <VStack className="md:items-center md:justify-center flex-1 w-full  p-6 md:gap-10 gap-16 md:m-auto md:w-1/2 h-full bg-white">
@@ -349,6 +354,14 @@ const MainContent = () => {
                 );
               })}
             </VStack>
+            <Button
+              className='w-full'
+              variant='solid'
+              size='lg'
+              onPress={logOut}
+            >
+              <ButtonText className='font-medium'>Logout</ButtonText>
+            </Button>
           </VStack>
         </VStack>
       </ScrollView>

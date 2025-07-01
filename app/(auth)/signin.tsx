@@ -30,12 +30,19 @@ import {
 } from "@/components/ui/icon";
 import { Button, ButtonText, ButtonIcon } from "@/components/ui/button";
 import { Keyboard } from "react-native";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, set } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle } from "lucide-react-native";
 import { Pressable } from "@/components/ui/pressable";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
+
+
+// Authentication
+import { useContext } from "react";
+import { AuthContext } from "@/context/AuthContext";
+import * as SecureStore from "expo-secure-store";
+import { saveToken } from "@/utils/auth";
 
 
 const USERS = [
@@ -62,6 +69,7 @@ const loginSchema = z.object({
 type LoginSchemaType = z.infer<typeof loginSchema>;
 
 export default function SignIn() {
+  const { logIn } = useContext(AuthContext);
   const {
     control,
     handleSubmit,
@@ -76,29 +84,74 @@ export default function SignIn() {
     passwordValid: true,
   });
 
-  const onSubmit = (data: LoginSchemaType) => {
-    const user = USERS.find((element) => element.email === data.email);
-    if (user) {
-      if (user.password !== data.password)
-        setValidated({ emailValid: true, passwordValid: false });
-      else {
-        setValidated({ emailValid: true, passwordValid: true });
-        toast.show({
-          placement: "bottom right",
-          render: ({ id }) => {
-            return (
-              <Toast nativeID={id} variant="solid" action="success">
-                <ToastTitle>Logged in successfully!</ToastTitle>
-              </Toast>
-            );
-          },
-        });
-        reset();
+  const onSubmit = async (data: LoginSchemaType) => {
+
+    /* Async call to server to request jwt-token
+    Test user from backend-API
+    testuser@example.com
+    supersecure123
+    */
+    
+
+    try {
+      const response = await fetch('http://192.168.189.51:5050/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setValidated({emailValid: true, passwordValid: false});
+        } else {
+          throw new Error('Something went wrong during login');
+        }
+        return;
       }
-    } else {
-      setValidated({ emailValid: false, passwordValid: true });
+      
+      const responseData = await response.json();
+      const jwt = responseData.access_token;
+
+      if (!jwt) throw new Error('Token missing in repsonse');
+
+      // Save JWT in secure store
+      logIn(jwt);
+      console.log('Tried to call logIn with token:', jwt);
+      
+      setValidated({ emailValid: true, passwordValid: true });
+
+      toast.show({
+        placement: "bottom",
+        render: ({ id }) => (
+          <Toast nativeID={id} variant='solid'>
+            <ToastTitle>Logged in successfully</ToastTitle>
+          </Toast>
+        ),
+      });
+
+      reset();
+      <Redirect href="/(tabs)" />;
+
+      // AuthProvider should be updated and reloud the component with isLoggedIn = true
+    } catch (error: any) {
+      console.error('Login error:', error);
+      toast.show({
+        placement: 'bottom',
+        render: ({ id }) => (
+          <Toast nativeID={id} variant='solid'>
+            <ToastTitle>Login failed. Please try again.</ToastTitle>
+          </Toast>
+        )
+      })
     }
   };
+
+
   const [showPassword, setShowPassword] = useState(false);
 
   const handleState = () => {

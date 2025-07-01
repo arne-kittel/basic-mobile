@@ -5,10 +5,14 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useContext, useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
+
+import { AuthProvider, AuthContext } from '@/context/AuthContext';
+import { A } from '@expo/html-elements';
+
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -44,14 +48,25 @@ export default function RootLayout() {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <AuthProvider>
+      <RootLayoutNav />
+    </AuthProvider>
+  )
 }
 
-const isLoggedIn = true; // Replace with your authentication logic
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const { isLoggedIn, isReady } = useContext(AuthContext);
 
+  if (!isReady) {
+    return null; // or a loading spinner
+  }
+  
+  console.log('Is ready:', isReady);
+  console.log('Is logged in:', isLoggedIn);
+  
   return (
     <GluestackUIProvider mode={(colorScheme ?? "light") as "light" | "dark"}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
