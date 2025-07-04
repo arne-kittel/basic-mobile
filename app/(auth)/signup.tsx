@@ -35,7 +35,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle } from "lucide-react-native";
 import { Pressable } from "@/components/ui/pressable";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 
 const signUpSchema = z.object({
   email: z.string().min(1, "Email is required").email(),
@@ -74,32 +74,68 @@ export default function SignUp() {
   });
   const toast = useToast();
 
-  const onSubmit = (data: SignUpSchemaType) => {
+  const onSubmit = async (data: SignUpSchemaType) => {
     if (data.password === data.confirmpassword) {
-      toast.show({
-        placement: "bottom right",
-        render: ({ id }) => {
-          return (
-            <Toast nativeID={id} variant="solid" action="success">
-              <ToastTitle>Success</ToastTitle>
+      try {
+        const response = await fetch('http://192.168.189.51:5050/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: data.email,
+            password: data.password,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to sign up");
+        }
+
+        if (response.status === 201) {
+          const responseData = await response.json();
+          console.log("User signed up successfully");
+          
+        }
+
+        toast.show({
+          placement: "bottom",
+          render: ({ id }) => (
+            <Toast nativeID={id} variant='solid'>
+              <ToastTitle>Registered successfully</ToastTitle>
             </Toast>
-          );
-        },
-      });
-      reset();
+          ),
+        });
+        reset();
+        // Redirect to sign in page after successful sign up
+
+      } catch (error) {
+        console.error("Error during sign up:", error);
+        toast.show({
+          placement: "bottom",
+          render: ({ id }) => {
+            return (
+              <Toast nativeID={id} variant="solid" action="error">
+                <ToastTitle>Error signing up</ToastTitle>
+              </Toast>
+            );
+          },
+        });
+      }
     } else {
       toast.show({
-        placement: "bottom right",
-        render: ({ id }) => {
-          return (
-            <Toast nativeID={id} variant="solid" action="error">
-              <ToastTitle>Passwords do not match</ToastTitle>
-            </Toast>
-          );
-        },
+        placement: "bottom",
+        render: ({ id }) => (
+          <Toast nativeID={id} variant="solid" action="error">
+            <ToastTitle>Passwords do not match</ToastTitle>
+          </Toast>
+        ),
       });
     }
+    reset();
   };
+
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
