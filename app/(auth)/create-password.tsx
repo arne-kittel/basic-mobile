@@ -84,6 +84,8 @@ export default function CreatePassword() {
       });
     }
   };
+
+  
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 

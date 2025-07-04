@@ -77,6 +77,9 @@ export default function SignUp() {
   const onSubmit = async (data: SignUpSchemaType) => {
     if (data.password === data.confirmpassword) {
       try {
+        // Mit env Variable von URL ersetzen
+        // const apiUrl = process.env.API_URL || 'http://localhost:5050/api/auth/register';
+        // console.log("API URL:", apiUrl);
         const response = await fetch('http://192.168.189.51:5050/api/auth/register', {
           method: 'POST',
           headers: {
