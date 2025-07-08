@@ -108,23 +108,24 @@ export default function SignIn() {
             <Toast nativeID={id} variant='solid'>
             <ToastTitle>Login failed. Please try again.</ToastTitle>
           </Toast>
-        )
-      })
-    }
-    reset();
-    } catch (error) {
-      // See https://clerk.com/docs/custom-flows/error-handling for more info on error handling
-      console.error(JSON.stringify(error, null, 2));
-      toast.show({
-        placement: 'bottom',
-        render: ({ id }) => (
-          <Toast nativeID={id} variant='solid' action='error'>
-            <ToastTitle>Login failed. Please try again.</ToastTitle>
-          </Toast>
-        )
-      })
-    }
-  }
+          )
+        })
+      }
+      reset();
+
+      } catch (error) {
+        // See https://clerk.com/docs/custom-flows/error-handling for more info on error handling
+        console.error(JSON.stringify(error, null, 2));
+        toast.show({
+          placement: 'bottom',
+          render: ({ id }) => (
+            <Toast nativeID={id} variant='solid' action='error'>
+              <ToastTitle>Login failed. Please try again.</ToastTitle>
+            </Toast>
+          )
+        })
+      }
+    };
 
   const [showPassword, setShowPassword] = useState(false);
 
