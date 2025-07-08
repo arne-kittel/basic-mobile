@@ -37,6 +37,12 @@ import { AlertTriangle } from "lucide-react-native";
 import { Pressable } from "@/components/ui/pressable";
 import { Redirect, useRouter } from "expo-router";
 
+import { TextInput, TouchableOpacity, View } from 'react-native'
+
+
+// Authentication
+import { useSignUp } from '@clerk/clerk-expo';
+
 const signUpSchema = z.object({
   email: z.string().min(1, "Email is required").email(),
   password: z
@@ -74,69 +80,61 @@ export default function SignUp() {
   });
   const toast = useToast();
 
+  const {isLoaded, signUp, setActive} = useSignUp();
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [code, setCode] = useState('');
+  
+
   const onSubmit = async (data: SignUpSchemaType) => {
-    if (data.password === data.confirmpassword) {
-      try {
-        // Mit env Variable von URL ersetzen
-        // const apiUrl = process.env.API_URL || 'http://localhost:5050/api/auth/register';
-        // console.log("API URL:", apiUrl);
-        const response = await fetch('http://192.168.189.51:5050/api/auth/register', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: data.email,
-            password: data.password,
-          }),
-        });
+    if (!isLoaded) return;
 
-        if (!response.ok) {
-          throw new Error("Failed to sign up");
-        }
+    try {
+      await signUp.create({
+        emailAddress: data.email,
+        password: data.password,
+      })
 
-        if (response.status === 201) {
-          const responseData = await response.json();
-          console.log("User signed up successfully");
-          
-        }
+      // Send user an email with verification code
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' })
 
-        toast.show({
-          placement: "bottom",
-          render: ({ id }) => (
-            <Toast nativeID={id} variant='solid'>
-              <ToastTitle>Registered successfully</ToastTitle>
-            </Toast>
-          ),
-        });
-        reset();
-        // Redirect to sign in page after successful sign up
+      // Set 'pendingVerification' to true to display second form
+      // and capture OTP code
+      setPendingVerification(true)
+      reset();
+    } catch (err) {
+      // See https://clerk.com/docs/custom-flows/error-handling
+      // for more info on error handling
+      console.error(JSON.stringify(err, null, 2))
+    }
+  }
 
-      } catch (error) {
-        console.error("Error during sign up:", error);
-        toast.show({
-          placement: "bottom",
-          render: ({ id }) => {
-            return (
-              <Toast nativeID={id} variant="solid" action="error">
-                <ToastTitle>Error signing up</ToastTitle>
-              </Toast>
-            );
-          },
-        });
+  // Handle submission of verification form
+  const onVerifyPress = async () => {
+    if (!isLoaded) return
+
+    try {
+      // Use the code the user provided to attempt verification
+      const signUpAttempt = await signUp.attemptEmailAddressVerification({
+        code,
+      })
+
+      // If verification was completed, set the session to active
+      // and redirect the user
+      if (signUpAttempt.status === 'complete') {
+        await setActive({ session: signUpAttempt.createdSessionId })
+        router.replace('/')
+      } else {
+        // If the status is not complete, check why. User may need to
+        // complete further steps.
+        console.error(JSON.stringify(signUpAttempt, null, 2))
       }
-    } else {
-      toast.show({
-        placement: "bottom",
-        render: ({ id }) => (
-          <Toast nativeID={id} variant="solid" action="error">
-            <ToastTitle>Passwords do not match</ToastTitle>
-          </Toast>
-        ),
-      });
+    } catch (err) {
+      // See https://clerk.com/docs/custom-flows/error-handling
+      // for more info on error handling
+      console.error(JSON.stringify(err, null, 2))
     }
     reset();
-  };
+  }
 
 
   const [showPassword, setShowPassword] = useState(false);
@@ -157,6 +155,27 @@ export default function SignUp() {
     handleSubmit(onSubmit)();
   };
   const router = useRouter();
+
+
+  // arne.kittel@gmail.com
+  // dejxaz-8batja-datbYp
+
+  if (pendingVerification) {
+    return (
+      <>
+        <Text>Verify your email</Text>
+        <TextInput
+          value={code}
+          placeholder="Enter your verification code"
+          onChangeText={(code) => setCode(code)}
+        />
+        <TouchableOpacity onPress={onVerifyPress}>
+          <Text>Verify</Text>
+        </TouchableOpacity>
+      </>
+    )
+  }
+
   return (
     <VStack className="p-9 pb-5 max-w-[440px] w-full" space="md">
       <VStack className="md:items-center" space="md">

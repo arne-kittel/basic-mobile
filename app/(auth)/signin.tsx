@@ -39,10 +39,7 @@ import { Redirect, useRouter } from "expo-router";
 
 
 // Authentication
-import { useContext } from "react";
-import { AuthContext } from "@/context/AuthContext";
-import * as SecureStore from "expo-secure-store";
-import { saveToken } from "@/utils/auth";
+import { useSignIn } from "@clerk/clerk-expo";
 
 
 const USERS = [
@@ -69,7 +66,7 @@ const loginSchema = z.object({
 type LoginSchemaType = z.infer<typeof loginSchema>;
 
 export default function SignIn() {
-  const { logIn } = useContext(AuthContext);
+  
   const {
     control,
     handleSubmit,
@@ -83,74 +80,51 @@ export default function SignIn() {
     emailValid: true,
     passwordValid: true,
   });
+  const router = useRouter();
+  const { signIn, setActive, isLoaded } = useSignIn();
 
   const onSubmit = async (data: LoginSchemaType) => {
 
-    /* Async call to server to request jwt-token
-    Test user from backend-API
-    testuser@example.com
-    supersecure123
-    */
-    
+    // arne.kittel@gmail.com
+    // dejxaz-8batja-datbYp
+    if (!isLoaded) return;
 
     try {
-      const response = await fetch('http://192.168.189.51:5050/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-        }),
-      });
+      const signInAttempt = await signIn.create({
+        identifier: data.email,
+        password: data.password,
+      })
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          setValidated({emailValid: true, passwordValid: false});
-        } else {
-          throw new Error('Something went wrong during login');
-        }
-        return;
-      }
-      
-      const responseData = await response.json();
-      const jwt = responseData.access_token;
-
-      if (!jwt) throw new Error('Token missing in repsonse');
-
-      // Save JWT in secure store
-      logIn(jwt);
-      console.log('Tried to call logIn with token:', jwt);
-      
-      setValidated({ emailValid: true, passwordValid: true });
-
-      toast.show({
-        placement: "bottom",
-        render: ({ id }) => (
-          <Toast nativeID={id} variant='solid'>
-            <ToastTitle>Logged in successfully</ToastTitle>
-          </Toast>
-        ),
-      });
-
-      reset();
-      <Redirect href="/(tabs)" />;
-
-      // AuthProvider should be updated and reloud the component with isLoggedIn = true
-    } catch (error: any) {
-      console.error('Login error:', error);
-      toast.show({
-        placement: 'bottom',
-        render: ({ id }) => (
-          <Toast nativeID={id} variant='solid'>
+      // If sign-in process is complete, set the created session as active and redirect user
+      if (signInAttempt.status === 'complete') {
+        await setActive({ session: signInAttempt.createdSessionId})
+        router.replace('/(tabs)');
+      } else {
+        // if the status isn't complete, check why. User might nieed to complete furhter steps.
+        console.error(JSON.stringify(signInAttempt, null, 2));
+        toast.show({
+          placement: 'bottom',
+          render: ({ id }) => (
+            <Toast nativeID={id} variant='solid'>
             <ToastTitle>Login failed. Please try again.</ToastTitle>
           </Toast>
         )
       })
     }
-  };
-
+    reset();
+    } catch (error) {
+      // See https://clerk.com/docs/custom-flows/error-handling for more info on error handling
+      console.error(JSON.stringify(error, null, 2));
+      toast.show({
+        placement: 'bottom',
+        render: ({ id }) => (
+          <Toast nativeID={id} variant='solid' action='error'>
+            <ToastTitle>Login failed. Please try again.</ToastTitle>
+          </Toast>
+        )
+      })
+    }
+  }
 
   const [showPassword, setShowPassword] = useState(false);
 
@@ -164,8 +138,6 @@ export default function SignIn() {
     Keyboard.dismiss();
     handleSubmit(onSubmit)();
   };
-
-  const router = useRouter();
 
   return (
     <VStack className="p-9 pb-5 max-w-[440px] w-full bg-white" space="md">

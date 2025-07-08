@@ -36,7 +36,7 @@ import {
   AvatarFallbackText,
   AvatarImage,
 } from "@/components/ui/avatar";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { ProfileIcon } from "./assets/icons/profile";
 import { SafeAreaView } from "@/components/ui/safe-area-view";
 import { Center } from "@/components/ui/center";
@@ -79,8 +79,8 @@ import { EditPhotoIcon } from "./assets/icons/edit-photo";
 import { isWeb } from "@gluestack-ui/nativewind-utils/IsWeb";
 import { B } from "@expo/html-elements";
 
-import { useContext } from "react";
-import { AuthContext } from "@/context/AuthContext";
+// Authentication
+import { useClerk } from "@clerk/clerk-expo";
 
 type MobileHeaderProps = {
   title: string;
@@ -233,8 +233,19 @@ const accountData: AccountCardType[] = [
   },
 ];
 const MainContent = () => {
+  const { signOut } = useClerk();
   const [showModal, setShowModal] = useState(false);
-  const { logOut } = useContext(AuthContext);
+
+  const handleSignOut = async () => {
+    console.log("Signing Button Pressed");
+    try {
+      await signOut();
+      <Redirect href="/(auth)/splash-screen" />;
+    } catch (error) {
+      console.error(JSON.stringify(error, null, 2));
+    }
+
+  }
 
   return (
     <VStack className="md:items-center md:justify-center flex-1 w-full  p-6 md:gap-10 gap-16 md:m-auto md:w-1/2 h-full bg-white">
@@ -358,7 +369,7 @@ const MainContent = () => {
               className='w-full'
               variant='solid'
               size='lg'
-              onPress={logOut}
+              onPress={handleSignOut}
             >
               <ButtonText className='font-medium'>Logout</ButtonText>
             </Button>

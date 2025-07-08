@@ -10,8 +10,12 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
 
+
+// Authentication
 import { AuthProvider, AuthContext } from '@/context/AuthContext';
 import { A } from '@expo/html-elements';
+import { useAuth, ClerkProvider } from '@clerk/clerk-expo';
+import { tokenCache } from '@clerk/clerk-expo/token-cache';
 
 
 export {
@@ -28,57 +32,36 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    ...FontAwesome.font,
-  });
-
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
-
   return (
-    <AuthProvider>
+    <ClerkProvider tokenCache={tokenCache}>
       <RootLayoutNav />
-    </AuthProvider>
+    </ClerkProvider>
   )
-}
-
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { isLoggedIn, isReady } = useContext(AuthContext);
+  const { isSignedIn, isLoaded } = useAuth();
 
-  if (!isReady) {
+  if (!isLoaded) {
     return null; // or a loading spinner
   }
   
-  console.log('Is ready:', isReady);
-  console.log('Is logged in:', isLoggedIn);
+  console.log('Clerk isLoaded:', isLoaded);
+  console.log('Clerk isSignedIn:', isSignedIn);
   
   return (
     <GluestackUIProvider mode={(colorScheme ?? "light") as "light" | "dark"}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>
-          <Stack.Protected guard={isLoggedIn}>
+          <Stack.Protected guard={isSignedIn}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           </Stack.Protected>
-          <Stack.Protected guard={!isLoggedIn}>
+          <Stack.Protected guard={!isSignedIn}>
             <Stack.Screen name="(auth)/splash-screen" options={{ headerShown: false }} />
           </Stack.Protected>
         </Stack>
       </ThemeProvider>
     </GluestackUIProvider>
   );
+}
 }
