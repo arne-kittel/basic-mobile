@@ -12,8 +12,6 @@ import { useColorScheme } from '@/components/useColorScheme';
 
 
 // Authentication
-import { AuthProvider, AuthContext } from '@/context/AuthContext';
-import { A } from '@expo/html-elements';
 import { useAuth, ClerkProvider } from '@clerk/clerk-expo';
 import { tokenCache } from '@clerk/clerk-expo/token-cache';
 

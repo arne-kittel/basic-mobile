@@ -8,7 +8,7 @@ import { Image } from '@/components/ui/image';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useRouter } from 'expo-router';
 
-export default function WelcomeScreenO() {
+export default function StartScreen() {
   const colorScheme = useColorScheme();
 
   const imageSource = require("@/assets/logos/snb_logo.png")
