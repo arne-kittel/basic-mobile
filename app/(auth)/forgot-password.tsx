@@ -48,11 +48,11 @@ export default function ForgotPassword() {
 
   const router = useRouter();
   
-  // useEffect(() => {
-  //   if (isSignedIn) {
-  //     router.push('/(tabs)')
-  //   }
-  // })
+  useEffect(() => {
+    if (isSignedIn) {
+      router.push('/(tabs)')
+    }
+  })
 
   const {
     control,
