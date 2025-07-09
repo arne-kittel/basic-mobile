@@ -17,7 +17,7 @@ import {
 import { Input, InputField } from "@/components/ui/input";
 import { ArrowLeftIcon, Icon } from "@/components/ui/icon";
 import { Button, ButtonText } from "@/components/ui/button";
-import { Keyboard } from "react-native";
+import { Keyboard, FlatList } from "react-native";
 import { useForm, Controller, set, Form } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -46,6 +46,7 @@ export default function ForgotPassword() {
   const [error, setError] = useState(''); 
 
   const [successfulCreation, setSuccessfulCreation] = useState(false);
+  const [authErrors, setAuthErrors] = useState<{ message: string }[]>([]);
   
   const router = useRouter();
   
@@ -104,19 +105,23 @@ export default function ForgotPassword() {
         })
         }
         reset();
-    } catch (error) {
-      console.error(JSON.stringify(error, null, 2));
-        toast.show({
-        placement: "bottom right",
-        render: ({ id }) => {
-          return (
-            <Toast nativeID={id} variant="solid" action="success">
-            <ToastTitle>Link Sent Successfully</ToastTitle>
-          </Toast>
-        );
-        },
-      });
-    }
+    } catch (err: any) {
+          // See https://clerk.com/docs/custom-flows/error-handling for more info on error handling
+          if (err.errors && Array.isArray(err.errors)) {
+            setAuthErrors(err.errors.map((e: any) => ({ message: e.longMessage })));
+          } else {
+            setAuthErrors([{ message: err.message || "An unknown error occurred" }]);
+          }
+          console.error(JSON.stringify(err, null, 2));
+          toast.show({
+            placement: 'bottom',
+            render: ({ id }) => (
+              <Toast nativeID={id} variant='solid' action='error'>
+                <ToastTitle>Login failed. Please try again.</ToastTitle>
+              </Toast>
+            )
+          })
+        }
   };
 
   return (
@@ -173,6 +178,19 @@ export default function ForgotPassword() {
             </FormControlErrorText>
           </FormControlError>
         </FormControl>
+        {authErrors.length > 0 && (
+                    <VStack className="w-full" space="sm">
+                      <FlatList
+                        data={authErrors}
+                        keyExtractor={(_, index) => index.toString()}
+                        renderItem={({ item }) => (
+                          <Text className="text-red-500 text-sm">
+                            {item.message}
+                          </Text>
+                        )}
+                      />
+                    </VStack>
+                  )}
         <Button className="w-full" onPress={handleSubmit(onSubmit)}>
           <ButtonText className="font-medium">Request reset code</ButtonText>
         </Button>

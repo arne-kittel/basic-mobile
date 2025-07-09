@@ -29,7 +29,7 @@ import {
   Icon,
 } from "@/components/ui/icon";
 import { Button, ButtonText, ButtonIcon } from "@/components/ui/button";
-import { Keyboard } from "react-native";
+import { Keyboard, FlatList } from "react-native";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -43,30 +43,38 @@ import { TextInput, TouchableOpacity, View } from 'react-native'
 // Authentication
 import { useSignUp } from '@clerk/clerk-expo';
 
-const signUpSchema = z.object({
-  email: z.string().min(1, "Email is required").email(),
-  password: z
-    .string()
-    .min(6, "Must be at least 8 characters in length")
-    .regex(new RegExp(".*[A-Z].*"), "One uppercase character")
-    .regex(new RegExp(".*[a-z].*"), "One lowercase character")
-    .regex(new RegExp(".*\\d.*"), "One number")
-    .regex(
-      new RegExp(".*[`~<>?,./!@#$%^&*()\\-_+=\"'|{}\\[\\];:\\\\].*"),
-      "One special character"
-    ),
-  confirmpassword: z
-    .string()
-    .min(6, "Must be at least 8 characters in length")
-    .regex(new RegExp(".*[A-Z].*"), "One uppercase character")
-    .regex(new RegExp(".*[a-z].*"), "One lowercase character")
-    .regex(new RegExp(".*\\d.*"), "One number")
-    .regex(
-      new RegExp(".*[`~<>?,./!@#$%^&*()\\-_+=\"'|{}\\[\\];:\\\\].*"),
-      "One special character"
-    ),
-  rememberme: z.boolean().optional(),
-});
+const signUpSchema = z
+  .object({
+    email: z.string().min(1, "Email is required").email(),
+    password: z
+      .string()
+      .min(6, "Must be at least 8 characters in length")
+      .max(32, "Must be at most 32 characters in length")
+      .regex(new RegExp(".*[A-Z].*"), "One uppercase character")
+      .regex(new RegExp(".*[a-z].*"), "One lowercase character")
+      .regex(new RegExp(".*\\d.*"), "One number")
+      .regex(
+        new RegExp(".*[`~<>?,./!@#$%^&*()\\-_+=\"'|{}\\[\\];:\\\\].*"),
+        "One special character"
+      ),
+    confirmpassword: z
+      .string()
+      .min(6, "Must be at least 8 characters in length")
+      .max(32, "Must be at most 32 characters in length")
+      .regex(new RegExp(".*[A-Z].*"), "One uppercase character")
+      .regex(new RegExp(".*[a-z].*"), "One lowercase character")
+      .regex(new RegExp(".*\\d.*"), "One number")
+      .regex(
+        new RegExp(".*[`~<>?,./!@#$%^&*()\\-_+=\"'|{}\\[\\];:\\\\].*"),
+        "One special character"
+      ),
+    rememberme: z.boolean().optional(),
+  })
+  .refine((data) => data.password === data.confirmpassword, {
+    message: "Passwords do not match",
+    path: ["confirmpassword"],
+  });
+
 type SignUpSchemaType = z.infer<typeof signUpSchema>;
 
 export default function SignUp() {
@@ -83,6 +91,7 @@ export default function SignUp() {
   const { isLoaded, signUp, setActive } = useSignUp();
   const [pendingVerification, setPendingVerification] = useState(false);
   const [code, setCode] = useState('');
+  const [authErrors, setAuthErrors] = useState<{ message: string }[]>([]);
 
 
   const onSubmit = async (data: SignUpSchemaType) => {
@@ -101,10 +110,22 @@ export default function SignUp() {
       // and capture OTP code
       setPendingVerification(true)
       reset();
-    } catch (err) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
-      console.error(JSON.stringify(err, null, 2))
+    } catch (err: any) {
+      // See https://clerk.com/docs/custom-flows/error-handling for more info on error handling
+      if (err.errors && Array.isArray(err.errors)) {
+        setAuthErrors(err.errors.map((e: any) => ({ message: e.longMessage })));
+      } else {
+        setAuthErrors([{ message: err.message || "An unknown error occurred" }]);
+      }
+      console.error(JSON.stringify(err, null, 2));
+      toast.show({
+        placement: 'bottom',
+        render: ({ id }) => (
+          <Toast nativeID={id} variant='solid' action='error'>
+            <ToastTitle>Login failed. Please try again.</ToastTitle>
+          </Toast>
+        )
+      })
     }
   }
 
@@ -180,7 +201,7 @@ export default function SignUp() {
           <Heading className="md:text-center" size="3xl">
             Sign up
           </Heading>
-          <Text>Sign up and start using gluestack</Text>
+          <Text>Sign up and become a member of the Sports & Business Club</Text>
         </VStack>
       </VStack>
       <VStack className="w-full">
@@ -193,16 +214,6 @@ export default function SignUp() {
               name="email"
               defaultValue=""
               control={control}
-              rules={{
-                validate: async (value) => {
-                  try {
-                    await signUpSchema.parseAsync({ email: value });
-                    return true;
-                  } catch (error: any) {
-                    return error.message;
-                  }
-                },
-              }}
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input>
                   <InputField
@@ -236,18 +247,6 @@ export default function SignUp() {
               name="password"
               defaultValue=""
               control={control}
-              rules={{
-                validate: async (value) => {
-                  try {
-                    await signUpSchema.parseAsync({
-                      password: value,
-                    });
-                    return true;
-                  } catch (error: any) {
-                    return error.message;
-                  }
-                },
-              }}
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input>
                   <InputField
@@ -281,18 +280,6 @@ export default function SignUp() {
               defaultValue=""
               name="confirmpassword"
               control={control}
-              rules={{
-                validate: async (value) => {
-                  try {
-                    await signUpSchema.parseAsync({
-                      password: value,
-                    });
-                    return true;
-                  } catch (error: any) {
-                    return error.message;
-                  }
-                },
-              }}
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input>
                   <InputField
@@ -321,7 +308,19 @@ export default function SignUp() {
               </FormControlErrorText>
             </FormControlError>
           </FormControl>
-
+          {authErrors.length > 0 && (
+            <VStack className="w-full" space="sm">
+              <FlatList
+                data={authErrors}
+                keyExtractor={(_, index) => index.toString()}
+                renderItem={({ item }) => (
+                  <Text className="text-red-500 text-sm">
+                    {item.message}
+                  </Text>
+                )}
+              />
+            </VStack>
+          )}
           <Controller
             name="rememberme"
             defaultValue={false}

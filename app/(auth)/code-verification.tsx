@@ -26,35 +26,42 @@ import { Pressable } from '@/components/ui/pressable';
 import { LinkText } from '@/components/ui/link';
 
 
-import { Keyboard } from 'react-native';
+import { Keyboard, FlatList } from 'react-native';
 import { Toast, ToastTitle, useToast } from '@/components/ui/toast';
 import { EyeIcon, EyeOffIcon } from '@/components/ui/icon';
 import { AlertTriangle } from "lucide-react-native";
 
 
-const resetPasswordSchema = z.object({
-  code: z.string().length(6, 'Inavlid code'),         // Only contains numbers
-  password: z
-    .string()
-    .min(6, "Must be at least 8 characters in length")
-    .regex(new RegExp(".*[A-Z].*"), "One uppercase character")
-    .regex(new RegExp(".*[a-z].*"), "One lowercase character")
-    .regex(new RegExp(".*\\d.*"), "One number")
-    .regex(
-      new RegExp(".*[`~<>?,./!@#$%^&*()\\-_+=\"'|{}\\[\\];:\\\\].*"),
-      "One special character"
-    ),
-  confirmpassword: z
-    .string()
-    .min(6, "Must be at least 8 characters in length")
-    .regex(new RegExp(".*[A-Z].*"), "One uppercase character")
-    .regex(new RegExp(".*[a-z].*"), "One lowercase character")
-    .regex(new RegExp(".*\\d.*"), "One number")
-    .regex(
-      new RegExp(".*[`~<>?,./!@#$%^&*()\\-_+=\"'|{}\\[\\];:\\\\].*"),
-      "One special character"
-    )
-})
+const resetPasswordSchema = z
+  .object({
+    code: z.string().length(6, 'Inavlid code'),         // Only contains numbers
+    password: z
+      .string()
+      .min(6, "Must be at least 8 characters in length")
+      .max(32, "Must be at most 32 characters in length")
+      .regex(new RegExp(".*[A-Z].*"), "One uppercase character")
+      .regex(new RegExp(".*[a-z].*"), "One lowercase character")
+      .regex(new RegExp(".*\\d.*"), "One number")
+      .regex(
+        new RegExp(".*[`~<>?,./!@#$%^&*()\\-_+=\"'|{}\\[\\];:\\\\].*"),
+        "One special character"
+      ),
+    confirmpassword: z
+      .string()
+      .min(6, "Must be at least 8 characters in length")
+      .max(32, "Must be at most 32 characters in length")
+      .regex(new RegExp(".*[A-Z].*"), "One uppercase character")
+      .regex(new RegExp(".*[a-z].*"), "One lowercase character")
+      .regex(new RegExp(".*\\d.*"), "One number")
+      .regex(
+        new RegExp(".*[`~<>?,./!@#$%^&*()\\-_+=\"'|{}\\[\\];:\\\\].*"),
+        "One special character"
+      )
+  })
+  .refine((data) => data.password === data.confirmpassword, {
+    message: "Passwords do not match",
+    path: ["confirmpassword"],
+  });
 
 type resetPasswordSchemaType = z.infer<typeof resetPasswordSchema>;
 
@@ -66,6 +73,8 @@ export default function CodeVerification() {
   const [error, setError] = useState('');
   const router = useRouter();
   const toast = useToast();
+
+  const [authErrors, setAuthErrors] = useState<{ message: string }[]>([]);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -121,18 +130,22 @@ export default function CodeVerification() {
       } else {
         console.error(JSON.stringify(resetPasswordAttempt, null, 2));
       }
-    } catch (error) {
-      console.error(JSON.stringify(error, null, 2));
+    } catch (err: any) {
+      // See https://clerk.com/docs/custom-flows/error-handling for more info on error handling
+      if (err.errors && Array.isArray(err.errors)) {
+        setAuthErrors(err.errors.map((e: any) => ({ message: e.longMessage })));
+      } else {
+        setAuthErrors([{ message: err.message || "An unknown error occurred" }]);
+      }
+      console.error(JSON.stringify(err, null, 2));
       toast.show({
-        placement: "bottom right",
-        render: ({ id }) => {
-          return (
-            <Toast nativeID={id} variant="solid" action="error">
-              <ToastTitle>Reset failed. Please try again.</ToastTitle>
-            </Toast>
-          );
-        },
-      });
+        placement: 'bottom',
+        render: ({ id }) => (
+          <Toast nativeID={id} variant='solid' action='error'>
+            <ToastTitle>Login failed. Please try again.</ToastTitle>
+          </Toast>
+        )
+      })
     }
   }
 
@@ -175,7 +188,6 @@ export default function CodeVerification() {
                 </FormControlErrorText>
               </FormControlError>
             </FormControl>
-
             <FormControl isInvalid={!!errors.password}>
               <FormControlLabel>
                 <FormControlLabelText>
@@ -186,18 +198,6 @@ export default function CodeVerification() {
                 name="password"
                 defaultValue=''
                 control={control}
-                rules={{
-                  validate: async (value) => {
-                    try {
-                      await resetPasswordSchema.parseAsync({
-                        password: value,
-                      });
-                      return true;
-                    } catch (error: any) {
-                      return error.message;
-                    }
-                  },
-                }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <Input>
                     <InputField
@@ -223,7 +223,7 @@ export default function CodeVerification() {
                 </FormControlErrorText>
               </FormControlError>
             </FormControl>
-            <FormControl isInvalid={!!errors.password}>
+            <FormControl isInvalid={!!errors.confirmpassword}>
               <FormControlLabel>
                 <FormControlLabelText>Confirm Password</FormControlLabelText>
               </FormControlLabel>
@@ -231,18 +231,6 @@ export default function CodeVerification() {
                 defaultValue=""
                 name="confirmpassword"
                 control={control}
-                rules={{
-                  validate: async (value) => {
-                    try {
-                      await resetPasswordSchema.parseAsync({
-                        confirmpassword: value,
-                      });
-                      return true;
-                    } catch (error: any) {
-                      return error.message;
-                    }
-                  },
-                }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <Input>
                     <InputField
@@ -273,7 +261,19 @@ export default function CodeVerification() {
             </FormControl>
           </VStack>
         </VStack>
-
+        {authErrors.length > 0 && (
+          <VStack className="w-full" space="sm">
+            <FlatList
+              data={authErrors}
+              keyExtractor={(_, index) => index.toString()}
+              renderItem={({ item }) => (
+                <Text className="text-red-500 text-sm">
+                  {item.message}
+                </Text>
+              )}
+            />
+          </VStack>
+        )}
         {/* <Button onPress={onReset} isDisabled={loading || code.length < 6}> */}
         <VStack className="w-full my-7" space="lg">
           <Button className="w-full" onPress={handleSubmit(onSubmit)}>

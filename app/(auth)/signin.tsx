@@ -29,7 +29,7 @@ import {
   Icon,
 } from "@/components/ui/icon";
 import { Button, ButtonText, ButtonIcon } from "@/components/ui/button";
-import { Keyboard } from "react-native";
+import { Keyboard, FlatList } from "react-native";
 import { useForm, Controller, set } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -59,7 +59,9 @@ const USERS = [
 
 const loginSchema = z.object({
   email: z.string().min(1, "Email is required").email(),
-  password: z.string().min(1, "Password is required"),
+  password: z
+    .string().min(1, "Password is required")
+    .max(32, "Must be at most 32 characters in length"),
   rememberme: z.boolean().optional(),
 });
 
@@ -82,6 +84,8 @@ export default function SignIn() {
   });
   const router = useRouter();
   const { signIn, setActive, isLoaded } = useSignIn();
+
+  const [authErrors, setAuthErrors] = useState<{message: string}[]>([]);
 
   const onSubmit = async (data: LoginSchemaType) => {
 
@@ -114,9 +118,14 @@ export default function SignIn() {
       }
       reset();
 
-      } catch (error) {
+      } catch (err: any) {
         // See https://clerk.com/docs/custom-flows/error-handling for more info on error handling
-        console.error(JSON.stringify(error, null, 2));
+        if (err.errors && Array.isArray(err.errors)) {
+          setAuthErrors(err.errors.map((e: any) => ({ message: e.longMessage })));
+        } else {
+          setAuthErrors([{ message: err.message || "An unknown error occurred" }]);
+        }
+        console.error(JSON.stringify(err, null, 2));
         toast.show({
           placement: 'bottom',
           render: ({ id }) => (
@@ -164,16 +173,6 @@ export default function SignIn() {
               defaultValue=""
               name="email"
               control={control}
-              rules={{
-                validate: async (value) => {
-                  try {
-                    await loginSchema.parseAsync({ email: value });
-                    return true;
-                  } catch (error: any) {
-                    return error.message;
-                  }
-                },
-              }}
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input>
                   <InputField
@@ -210,16 +209,6 @@ export default function SignIn() {
               defaultValue=""
               name="password"
               control={control}
-              rules={{
-                validate: async (value) => {
-                  try {
-                    await loginSchema.parseAsync({ password: value });
-                    return true;
-                  } catch (error: any) {
-                    return error.message;
-                  }
-                },
-              }}
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input>
                   <InputField
@@ -245,6 +234,19 @@ export default function SignIn() {
               </FormControlErrorText>
             </FormControlError>
           </FormControl>
+          {authErrors.length > 0 && (
+            <VStack className="w-full" space="sm">
+              <FlatList
+                data={authErrors}
+                keyExtractor={(_, index) => index.toString()}
+                renderItem={({ item }) => (
+                  <Text className="text-red-500 text-sm">
+                    {item.message}
+                  </Text>
+                )}
+              />
+            </VStack>
+              )}  
           <HStack className="w-full justify-between ">
             <Controller
               name="rememberme"
