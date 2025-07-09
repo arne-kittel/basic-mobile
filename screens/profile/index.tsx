@@ -36,7 +36,7 @@ import {
   AvatarFallbackText,
   AvatarImage,
 } from "@/components/ui/avatar";
-import { Redirect, useRouter } from "expo-router";
+import { Redirect, router, useRouter } from "expo-router";
 import { ProfileIcon } from "./assets/icons/profile";
 import { SafeAreaView } from "@/components/ui/safe-area-view";
 import { Center } from "@/components/ui/center";
@@ -235,12 +235,13 @@ const accountData: AccountCardType[] = [
 const MainContent = () => {
   const { signOut } = useClerk();
   const [showModal, setShowModal] = useState(false);
+  const router = useRouter();
 
   const handleSignOut = async () => {
-    console.log("Signing Button Pressed");
+    console.log("Signout Button Pressed");
     try {
       await signOut();
-      <Redirect href="/(auth)/splash-screen" />;
+      router.replace('/(tabs)');          // --> Causing and error, as the there is no navigator handling the route.
     } catch (error) {
       console.error(JSON.stringify(error, null, 2));
     }

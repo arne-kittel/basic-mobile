@@ -98,6 +98,7 @@ export default function SignIn() {
       // If sign-in process is complete, set the created session as active and redirect user
       if (signInAttempt.status === 'complete') {
         await setActive({ session: signInAttempt.createdSessionId})
+        reset();
         router.replace('/(tabs)');
       } else {
         // if the status isn't complete, check why. User might nieed to complete furhter steps.
@@ -182,6 +183,9 @@ export default function SignIn() {
                     onBlur={onBlur}
                     onSubmitEditing={handleKeyPress}
                     returnKeyType="done"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="email-address"
                   />
                 </Input>
               )}

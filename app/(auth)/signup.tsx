@@ -80,10 +80,10 @@ export default function SignUp() {
   });
   const toast = useToast();
 
-  const {isLoaded, signUp, setActive} = useSignUp();
+  const { isLoaded, signUp, setActive } = useSignUp();
   const [pendingVerification, setPendingVerification] = useState(false);
   const [code, setCode] = useState('');
-  
+
 
   const onSubmit = async (data: SignUpSchemaType) => {
     if (!isLoaded) return;
@@ -157,9 +157,6 @@ export default function SignUp() {
   const router = useRouter();
 
 
-  // arne.kittel@gmail.com
-  // dejxaz-8batja-datbYp
-
   if (pendingVerification) {
     return (
       <>
@@ -217,6 +214,9 @@ export default function SignUp() {
                     onBlur={onBlur}
                     onSubmitEditing={handleKeyPress}
                     returnKeyType="done"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="email-address"
                   />
                 </Input>
               )}
@@ -233,8 +233,8 @@ export default function SignUp() {
               <FormControlLabelText>Password</FormControlLabelText>
             </FormControlLabel>
             <Controller
-              defaultValue=""
               name="password"
+              defaultValue=""
               control={control}
               rules={{
                 validate: async (value) => {
