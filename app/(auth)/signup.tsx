@@ -86,6 +86,7 @@ export default function SignUp() {
   } = useForm<SignUpSchemaType>({
     resolver: zodResolver(signUpSchema),
   });
+
   const toast = useToast();
 
   const { isLoaded, signUp, setActive } = useSignUp();
@@ -93,7 +94,7 @@ export default function SignUp() {
   const [code, setCode] = useState('');
   const [authErrors, setAuthErrors] = useState<{ message: string }[]>([]);
 
-
+  // dodqUg-jobbi5-gyxquk
   const onSubmit = async (data: SignUpSchemaType) => {
     if (!isLoaded) return;
 
@@ -101,15 +102,20 @@ export default function SignUp() {
       await signUp.create({
         emailAddress: data.email,
         password: data.password,
-      })
 
-      // Send user an email with verification code
-      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' })
+      })
+      console.log("created signUp user", signUp.emailAddress, signUp.status)
+
+      console.log("Created signUp user:", signUp);
+
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+
+      setPendingVerification(true);
+      reset();
 
       // Set 'pendingVerification' to true to display second form
       // and capture OTP code
-      setPendingVerification(true)
-      reset();
+
     } catch (err: any) {
       // See https://clerk.com/docs/custom-flows/error-handling for more info on error handling
       if (err.errors && Array.isArray(err.errors)) {
@@ -128,35 +134,6 @@ export default function SignUp() {
       })
     }
   }
-
-  // Handle submission of verification form
-  const onVerifyPress = async () => {
-    if (!isLoaded) return
-
-    try {
-      // Use the code the user provided to attempt verification
-      const signUpAttempt = await signUp.attemptEmailAddressVerification({
-        code,
-      })
-
-      // If verification was completed, set the session to active
-      // and redirect the user
-      if (signUpAttempt.status === 'complete') {
-        await setActive({ session: signUpAttempt.createdSessionId })
-        router.replace('/')
-      } else {
-        // If the status is not complete, check why. User may need to
-        // complete further steps.
-        console.error(JSON.stringify(signUpAttempt, null, 2))
-      }
-    } catch (err) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
-      console.error(JSON.stringify(err, null, 2))
-    }
-    reset();
-  }
-
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -177,22 +154,17 @@ export default function SignUp() {
   };
   const router = useRouter();
 
-
   if (pendingVerification) {
     return (
-      <>
-        <Text>Verify your email</Text>
-        <TextInput
-          value={code}
-          placeholder="Enter your verification code"
-          onChangeText={(code) => setCode(code)}
-        />
-        <TouchableOpacity onPress={onVerifyPress}>
-          <Text>Verify</Text>
-        </TouchableOpacity>
-      </>
-    )
+      <Redirect
+        href={{
+          pathname: "/(auth)/signup-code-verification",
+          //params: { email: signUp.emailAddress },
+        }}
+      />
+    );
   }
+
 
   return (
     <VStack className="p-9 pb-5 max-w-[440px] w-full" space="md">

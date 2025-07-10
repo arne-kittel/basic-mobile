@@ -91,7 +91,7 @@ export default function ForgotPassword() {
         setSuccessfulCreation(true)
         console.log("Verfication code sent successfully")
         setError('')
-        router.push('/(auth)/code-verification')
+        router.push('/(auth)/forgotpw-code-verification')
       } else {
           // if the status isn't complete, check why. User might nieed to complete furhter steps.
           console.error(JSON.stringify(requestCodeAttempt, null, 2));

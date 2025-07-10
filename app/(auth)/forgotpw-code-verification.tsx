@@ -65,7 +65,7 @@ const resetPasswordSchema = z
 
 type resetPasswordSchemaType = z.infer<typeof resetPasswordSchema>;
 
-export default function CodeVerification() {
+export default function ForgotPasswordCodeVerification() {
 
   const { isSignedIn } = useAuth();
   const { isLoaded, signIn, setActive } = useSignIn();
@@ -177,6 +177,8 @@ export default function CodeVerification() {
                       onBlur={onBlur}
                       onSubmitEditing={handleKeyPress}
                       returnKeyType='done'
+                      keyboardType='numeric'
+                      maxLength={6}
                     />
                   </Input>
                 )}
