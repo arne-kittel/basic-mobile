@@ -81,7 +81,7 @@ export default function MyEventsCard({event, onWithdrawSuccess}: {event: SnBEven
                     Max. Participants: {event.max_participants ?? "unlimited"}
                   </Text>
                   <VStack className="w-full my-7" space="lg">
-                    <Button className="w-full">
+                    <Button className="w-full" variant='outline'>
                       <ButtonText className="font-medium" onPress={handleWithdraw}>Withdraw</ButtonText>
                     </Button>
                   </VStack>
