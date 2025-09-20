@@ -80,7 +80,7 @@ import { isWeb } from "@gluestack-ui/nativewind-utils/IsWeb";
 import { B } from "@expo/html-elements";
 
 // Authentication
-import { useClerk } from "@clerk/clerk-expo";
+import { useClerk, useUser } from "@clerk/clerk-expo";
 
 type MobileHeaderProps = {
   title: string;
@@ -235,6 +235,9 @@ const accountData: AccountCardType[] = [
 const MainContent = () => {
   const { signOut } = useClerk();
   const [showModal, setShowModal] = useState(false);
+
+  const { isSignedIn, user, isLoaded } = useUser();
+
   const router = useRouter();
 
   const handleSignOut = async () => {

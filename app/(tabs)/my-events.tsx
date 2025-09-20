@@ -32,7 +32,7 @@ export default function MyEvents() {
           console.log("🔐 Token:", token);
           
           if (!token) {
-              console.warn("❌ Kein Token vorhanden – User nicht eingeloggt?");
+              console.warn("Kein Token vorhanden - User nicht eingeloggt?");
               return;
             }
             
@@ -54,16 +54,16 @@ export default function MyEvents() {
             
             if (!response.ok) {
                 const errText = await response.text();
-                console.warn("❌ Backend response:", errText);
+                console.warn("Backend response:", errText);
                 throw new Error("Failed to fetch events");
             }
             
             const data = await response.json();
-            console.log("✅ Events geladen:", data);
-            
+            console.log("Events geladen:", data);
             setEvents(data);
+            
         } catch (error) {
-            console.error("❌ Fehler in fetchEvents:", error);
+            console.error("Fehler in fetchEvents:", error);
         }
     };
     
