@@ -77,7 +77,7 @@ export default function EventFeedCard({event, onParticipateSuccess}: {event: SnB
                     📍 {event.is_online ? "Online Event" : event.location}
                   </Text>
                   <Text className="text-sm text-gray-600">
-                    Max. Participants: {event.max_participants ?? "unlimited"}
+                    Open spots: {event.available_spots ?? "unlimited"}/{event.max_participants ?? "unlimited"}
                   </Text>
                   <VStack className="w-full my-7" space="lg">
                     <Button className="w-full">

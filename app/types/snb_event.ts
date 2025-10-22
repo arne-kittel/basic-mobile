@@ -9,4 +9,5 @@ export interface SnBEvent {
     start_time: string;
     end_time?: string;
     max_participants?: number;
+    available_spots?: number;
   }
