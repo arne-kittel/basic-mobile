@@ -7,17 +7,28 @@ import { Button, ButtonText } from '@/components/ui/button';
 import { SnBEvent, getEventThumbnail } from '@/app/types/snb_event';
 import { useAuth } from '@clerk/clerk-expo';
 import { useState } from 'react';
+import { View, Dimensions, LayoutChangeEvent } from 'react-native';
+import Carousel from 'react-native-reanimated-carousel';
 
 interface EventFeedCardProps {
   event: SnBEvent;
   onParticipateSuccess: () => void;
 }
 
+// Saubere Typ-Definition für Media Items
+type MediaItem = {
+  uri: string | null;
+  type: 'image' | 'video' | 'gif';
+};
+
 const API_BASE_URL = "http://192.168.189.51:5050/api";
 const FALLBACK_IMAGE = require("@/assets/images/golf.jpg");
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function EventFeedCard({ event, onParticipateSuccess }: EventFeedCardProps) {
   const [isParticipating, setIsParticipating] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [carouselWidth, setCarouselWidth] = useState(SCREEN_WIDTH);
   const { getToken } = useAuth();
 
   const handleParticipate = async () => {
@@ -42,7 +53,6 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
       if (!response.ok) {
         const data = await response.json();
         console.warn("❌ Backend response:", data.error || "Unknown error");
-        // Optional: Zeige einen Toast/Alert mit dem Fehler (z.B. "Event is full")
         throw new Error(data.error || "Failed to participate");
       }
 
@@ -55,9 +65,13 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
     }
   };
 
-  // Thumbnail-URL aus Media-Array holen oder Fallback verwenden
-  const thumbnailUrl = getEventThumbnail(event);
-  const imageSource = thumbnailUrl ? { uri: thumbnailUrl } : FALLBACK_IMAGE;
+  // Media-Items für Carousel vorbereiten mit explizitem Typ
+  const mediaItems: MediaItem[] = event.media && event.media.length > 0 
+    ? event.media.map(m => ({ 
+        uri: m.sasUrl, 
+        type: (m.type as MediaItem['type']) 
+      }))
+    : [{ uri: null, type: 'image' as const }];
 
   // Datum formatieren
   const eventDate = new Date(event.start_time).toLocaleDateString('de-DE', {
@@ -72,18 +86,64 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
     minute: '2-digit',
   });
 
+  // Messe die tatsächliche Breite des Containers
+  const handleLayout = (event: LayoutChangeEvent) => {
+    const { width } = event.nativeEvent.layout;
+    if (width > 0) {
+      setCarouselWidth(width);
+    }
+  };
+
   return (
     <Box className='rounded-lg border border-gray-200 overflow-hidden bg-white shadow-sm'>
-      {/* Event Bild */}
-      <Image
-        source={imageSource}
-        alt={event.title}
-        className='w-full h-48 object-cover'
-        resizeMode='cover'
-      />
+      {/* Media Carousel */}
+      <View className='w-full h-72 relative z-0' onLayout={handleLayout}>
+        <Carousel
+          width={carouselWidth}
+          height={288}
+          data={mediaItems}
+          onSnapToItem={(index) => setCurrentIndex(index)}
+          renderItem={({ item }: { item: MediaItem }) => (
+            <Image
+              source={item.uri ? { uri: item.uri } : FALLBACK_IMAGE}
+              alt={event.title}
+              className='w-full h-full'
+              resizeMode='cover'
+            />
+          )}
+          loop={false}
+          enabled={mediaItems.length > 1}
+        />
+        
+        {/* Media Counter & Pagination Dots */}
+        {mediaItems.length > 1 && (
+          <View className='absolute inset-0 pointer-events-none'>
+            {/* Counter Badge (oben rechts) */}
+            <View className='absolute top-2 right-2 bg-black/60 px-2 py-1 rounded-xl'>
+              <Text className='text-white text-xs font-semibold'>
+                {currentIndex + 1}/{mediaItems.length}
+              </Text>
+            </View>
+            
+            {/* Pagination Dots (unten) */}
+            <View className='absolute bottom-2 left-0 right-0 flex-row justify-center items-center gap-1.5'>
+              {mediaItems.map((_, index) => (
+                <View
+                  key={index}
+                  className={`rounded-full ${
+                    index === currentIndex 
+                      ? 'w-2 h-2 bg-white' 
+                      : 'w-1.5 h-1.5 bg-white/50'
+                  }`}
+                />
+              ))}
+            </View>
+          </View>
+        )}
+      </View>
 
       {/* Event Details */}
-      <VStack className='p-4' space='sm'>
+      <VStack className='p-4 bg-white' space='sm'>
         <Text className='text-xl font-semibold text-gray-900'>
           {event.title}
         </Text>
@@ -107,26 +167,21 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
             </Text>
           )}
           
-          {/* Teilnehmer-Informationen - nur anzeigen wenn Daten vorhanden */}
+          {/* Teilnehmer-Informationen */}
           {event.participant_count !== undefined && (
             <Text className='text-sm text-gray-600 font-medium'>
               {event.max_participants ? (
-                // Event mit max_participants
                 event.available_spots !== undefined && event.available_spots !== null ? (
-                  // Zeige freie Plätze
                   <>👥 {event.available_spots} spots available ({event.participant_count}/{event.max_participants})</>
                 ) : (
-                  // Fallback: Nur Teilnehmer/Max
                   <>👥 {event.participant_count}/{event.max_participants} participants</>
                 )
               ) : (
-                // Event ohne Limit
                 <>👥 {event.participant_count} participants</>
               )}
             </Text>
           )}
           
-          {/* Fallback wenn keine Teilnehmer-Daten geladen wurden */}
           {event.participant_count === undefined && event.max_participants && (
             <Text className='text-sm text-gray-600'>
               👥 Max {event.max_participants} participants
@@ -143,13 +198,6 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
             {isParticipating ? 'Joining...' : 'Join Event'}
           </ButtonText>
         </Button>
-
-        {/* Medien-Indikator */}
-        {event.media && event.media.length > 1 && (
-          <Text className='text-xs text-gray-400 mt-2 text-center'>
-            📸 {event.media.length} {event.media.length === 1 ? 'photo' : 'photos'}
-          </Text>
-        )}
       </VStack>
     </Box>
   );

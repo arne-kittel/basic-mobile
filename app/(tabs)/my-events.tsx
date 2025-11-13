@@ -29,20 +29,21 @@ export default function MyEvents() {
           console.log("🧪 Start fetchEvents()");
           
           const token = await getToken();
-          console.log("🔐 Token:", token);
+          console.log("🔑 Token:", token);
           
           if (!token) {
               console.warn("Kein Token vorhanden - User nicht eingeloggt?");
               return;
             }
             
-            console.log("🌍 URL:", "http://192.168.189.51:5050/api/events/my-events");
+            // ✅ WICHTIG: include_media=true hinzugefügt!
+            console.log("🌐 URL:", "http://192.168.189.51:5050/api/events/my-events?include_media=true");
             console.log("📨 Headers:", {
                 Authorization: `Bearer ${token}`,
                 "Content-Type": "application/json",
             });
             
-            const response = await fetch("http://192.168.189.51:5050/api/events/my-events", {
+            const response = await fetch("http://192.168.189.51:5050/api/events/my-events?include_media=true", {
                 method: "GET",
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -59,11 +60,17 @@ export default function MyEvents() {
             }
             
             const data = await response.json();
-            console.log("Events geladen:", data);
+            console.log("✅ Events geladen:", data);
+            console.log("🖼️ Media-Items pro Event:", data.map((e: SnBEvent) => ({ 
+              id: e.id, 
+              title: e.title, 
+              mediaCount: e.media?.length || 0 
+            })));
+            
             setEvents(data);
             
         } catch (error) {
-            console.error("Fehler in fetchEvents:", error);
+            console.error("❌ Fehler in fetchEvents:", error);
         }
     };
     

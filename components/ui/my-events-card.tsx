@@ -6,16 +6,29 @@ import { Heading } from '@/components/ui/heading'
 import { Button, ButtonText } from '@/components/ui/button'
 import { SnBEvent } from '@/app/types/snb_event'
 import { useAuth } from '@clerk/clerk-expo'
+import { useState } from 'react'
+import { View, Dimensions, LayoutChangeEvent } from 'react-native'
+import Carousel from 'react-native-reanimated-carousel'
 
+// Saubere Typ-Definition für Media Items
+type MediaItem = {
+  uri: string | null;
+  type: 'image' | 'video' | 'gif';
+};
+
+const FALLBACK_IMAGE = require("@/assets/images/golf.jpg");
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function MyEventsCard({event, onWithdrawSuccess}: {event: SnBEvent, onWithdrawSuccess: () => void}) {
     const { getToken } = useAuth();
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [carouselWidth, setCarouselWidth] = useState(SCREEN_WIDTH);
     
     const handleWithdraw = async () => {
         try {
         console.log("Withdraw from event", event.id);
         const token = await getToken();
-        console.log("🔐 Token:", token);
+        console.log("🔑 Token:", token);
   
         if (!token) {
           console.warn("❌ Kein Token vorhanden – User nicht eingeloggt?");
@@ -53,20 +66,83 @@ export default function MyEventsCard({event, onWithdrawSuccess}: {event: SnBEven
         }
     }
 
+    // Media-Items für Carousel vorbereiten mit explizitem Typ
+    const mediaItems: MediaItem[] = event.media && event.media.length > 0 
+      ? event.media.map(m => ({ 
+          uri: m.sasUrl, 
+          type: (m.type as MediaItem['type']) 
+        }))
+      : [{ uri: null, type: 'image' as const }];
+
+    // DEBUG: Prüfe was geladen wird
+    console.log('🖼️ [MyEventsCard] Event ID:', event.id);
+    console.log('🖼️ [MyEventsCard] Media Array:', event.media);
+    console.log('🖼️ [MyEventsCard] Media Count:', event.media?.length || 0);
+    console.log('🖼️ [MyEventsCard] Media Items:', mediaItems);
+    if (mediaItems.length > 0 && mediaItems[0].uri) {
+      console.log('🖼️ [MyEventsCard] First URI:', mediaItems[0].uri.substring(0, 80) + '...');
+    }
+
+    // Messe die tatsächliche Breite des Containers
+    const handleLayout = (event: LayoutChangeEvent) => {
+      const { width } = event.nativeEvent.layout;
+      if (width > 0) {
+        setCarouselWidth(width);
+      }
+    };
+
     return (
         <VStack className='w-full' space='2xl'>
               <VStack
                 className="rounded-xl border border-outline-300 p-5"
                 key={event.id}
               >
-                <Box className="w-full h-64 rounded">
-                  <Image
-                    size="2xl"
-                    source={require("@/assets/images/golf.jpg")} // Platzhalter
-                    alt="image"
-                    className="w-full"
+                {/* Media Carousel */}
+                <View className='w-full h-64 relative rounded-xl overflow-hidden' onLayout={handleLayout}>
+                  <Carousel
+                    width={carouselWidth}
+                    height={256}
+                    data={mediaItems}
+                    onSnapToItem={(index) => setCurrentIndex(index)}
+                    renderItem={({ item }: { item: MediaItem }) => (
+                      <Image
+                        source={item.uri ? { uri: item.uri } : FALLBACK_IMAGE}
+                        alt={event.title}
+                        className='w-full h-full'
+                        resizeMode='cover'
+                      />
+                    )}
+                    loop={false}
+                    enabled={mediaItems.length > 1}
                   />
-                </Box>
+                  
+                  {/* Media Counter & Pagination Dots */}
+                  {mediaItems.length > 1 && (
+                    <View className='absolute inset-0 pointer-events-none'>
+                      {/* Counter Badge (oben rechts) */}
+                      <View className='absolute top-2 right-2 bg-black/60 px-2 py-1 rounded-xl'>
+                        <Text className='text-white text-xs font-semibold'>
+                          {currentIndex + 1}/{mediaItems.length}
+                        </Text>
+                      </View>
+                      
+                      {/* Pagination Dots (unten) */}
+                      <View className='absolute bottom-2 left-0 right-0 flex-row justify-center items-center gap-1.5'>
+                        {mediaItems.map((_, index) => (
+                          <View
+                            key={index}
+                            className={`rounded-full ${
+                              index === currentIndex 
+                                ? 'w-2 h-2 bg-white' 
+                                : 'w-1.5 h-1.5 bg-white/50'
+                            }`}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                </View>
+
                 <VStack className="mt-4" space="md">
                   <Text className="text-sm text-gray-500">
                     {new Date(event.start_time).toLocaleString()}
@@ -83,8 +159,8 @@ export default function MyEventsCard({event, onWithdrawSuccess}: {event: SnBEven
                   </Text>
                   )}
                   <VStack className="w-full my-7" space="lg">
-                    <Button className="w-full" variant='outline'>
-                      <ButtonText className="font-medium" onPress={handleWithdraw}>Withdraw</ButtonText>
+                    <Button className="w-full" variant='outline' onPress={handleWithdraw}>
+                      <ButtonText className="font-medium">Withdraw</ButtonText>
                     </Button>
                   </VStack>
                 </VStack>
