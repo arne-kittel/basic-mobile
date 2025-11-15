@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import {
@@ -185,29 +185,28 @@ const userSchema = z.object({
     .string()
     .min(1, "Last name is required")
     .max(50, "Last name must be less than 50 characters"),
-  gender: z.enum(["male", "female", "other"]),
   phoneNumber: z
     .string()
     .regex(
       /^\+?[1-9]\d{1,14}$/,
       "Phone number must be a valid international phone number"
     ),
-  city: z
-    .string()
-    .min(1, "City is required")
-    .max(100, "City must be less than 100 characters"),
-  state: z
-    .string()
-    .min(1, "State is required")
-    .max(100, "State must be less than 100 characters"),
-  country: z
-    .string()
-    .min(1, "Country is required")
-    .max(100, "Country must be less than 100 characters"),
-  zipcode: z
-    .string()
-    .min(1, "Zipcode is required")
-    .max(20, "Zipcode must be less than 20 characters"),
+  // city: z
+  //   .string()
+  //   .min(1, "City is required")
+  //   .max(100, "City must be less than 100 characters"),
+  // state: z
+  //   .string()
+  //   .min(1, "State is required")
+  //   .max(100, "State must be less than 100 characters"),
+  // country: z
+  //   .string()
+  //   .min(1, "Country is required")
+  //   .max(100, "Country must be less than 100 characters"),
+  // zipcode: z
+  //   .string()
+  //   .min(1, "Zipcode is required")
+  //   .max(20, "Zipcode must be less than 20 characters"),
 });
 
 interface AccountCardType {
@@ -251,6 +250,8 @@ const MainContent = () => {
 
   }
 
+  const userImage = user?.imageUrl;
+
   return (
     <VStack className="md:items-center md:justify-center flex-1 w-full  p-6 md:gap-10 gap-16 md:m-auto md:w-1/2 h-full bg-white">
       <ModalComponent showModal={showModal} setShowModal={setShowModal} />
@@ -263,13 +264,15 @@ const MainContent = () => {
               <Avatar size="2xl" className="bg-primary-600">
                 <AvatarImage
                   alt="Profile Image"
-                  source={require("@/assets/profile-screens/profile/image.png")}
+                  source={{ uri: userImage }}
                 />
                 <AvatarBadge />
               </Avatar>
               <VStack className="gap-1 w-full items-center">
                 <Text size="2xl" className="font-roboto text-dark">
-                  Arne Kittel
+                  {user?.firstName || user?.lastName
+                    ? `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim()
+                    : user?.primaryEmailAddress?.emailAddress}
                 </Text>
                 <Text className="font-roboto text-sm text-typograpphy-700">
                   # 000000001
@@ -407,14 +410,14 @@ const MobileScreen = () => {
       <Box className="w-full h-[188px]">
         <Image
           source={require("@/assets/profile-screens/profile/image2.png")}
-          size ="2xl"
+          size="2xl"
           alt="Banner Image"
         />
       </Box>
       <Pressable className=" bg-background-950 rounded-full items-center justify-center h-8 w-8 right-6 top-[172px]">
         <Icon as={CameraSparklesIcon} />
       </Pressable>
-      <Center className="w-full  top-10">
+      <Center className="w-full top-10">
         <Avatar size="2xl">
           <AvatarImage
             source={require("@/assets/profile-screens/profile/image.png")}
@@ -509,50 +512,6 @@ const MobileScreen = () => {
               </FormControlErrorText>
             </FormControlError>
           </FormControl>
-          <FormControl isInvalid={!!errors.gender}>
-            <FormControlLabel className="mb-2">
-              <FormControlLabelText>Gender</FormControlLabelText>
-            </FormControlLabel>
-            <Controller
-              name="gender"
-              control={control}
-              rules={{
-                validate: async (value) => {
-                  try {
-                    await userSchema.parseAsync({ city: value });
-                    return true;
-                  } catch (error: any) {
-                    return error.message;
-                  }
-                },
-              }}
-              render={({ field: { onChange, value } }) => (
-                <Select onValueChange={onChange} selectedValue={value}>
-                  <SelectTrigger variant="outline" size="md">
-                    <SelectInput placeholder="Select" />
-                    <SelectIcon className="mr-3" as={ChevronDownIcon} />
-                  </SelectTrigger>
-                  <SelectPortal>
-                    <SelectBackdrop />
-                    <SelectContent>
-                      <SelectDragIndicatorWrapper>
-                        <SelectDragIndicator />
-                      </SelectDragIndicatorWrapper>
-                      <SelectItem label="Male" value="male" />
-                      <SelectItem label="Female" value="female" />
-                      <SelectItem label="Others" value="others" />
-                    </SelectContent>
-                  </SelectPortal>
-                </Select>
-              )}
-            />
-            <FormControlError>
-              <FormControlErrorIcon as={AlertCircle} size="md" />
-              <FormControlErrorText>
-                {errors?.gender?.message}
-              </FormControlErrorText>
-            </FormControlError>
-          </FormControl>
           <FormControl isInvalid={!!errors.phoneNumber}>
             <FormControlLabel className="mb-2">
               <FormControlLabelText>Phone number</FormControlLabelText>
@@ -612,7 +571,7 @@ const MobileScreen = () => {
             </FormControlError>
           </FormControl>
         </VStack>
-        <Heading className="font-roboto" size="sm">
+        {/* <Heading className="font-roboto" size="sm">
           Address
         </Heading>
         <VStack space="md">
@@ -796,7 +755,7 @@ const MobileScreen = () => {
               </FormControlErrorText>
             </FormControlError>
           </FormControl>
-        </VStack>
+        </VStack> */}
         <Button
           onPress={() => {
             handleSubmit(onSubmit)();
@@ -826,14 +785,51 @@ const ModalComponent = ({
     resolver: zodResolver(userSchema),
   });
 
+  const { user, isLoaded } = useUser();
+
   const handleKeyPress = () => {
     Keyboard.dismiss();
   };
   const [isEmailFocused, setIsEmailFocused] = useState(false);
   const [isNameFocused, setIsNameFocused] = useState(false);
-  const onSubmit = (_data: userSchemaDetails) => {
-    setShowModal(false);
-    reset();
+  // const onSubmit = (_data: userSchemaDetails) => {
+  //   setShowModal(false);
+  //   reset();
+  // };
+
+  const userImage = user?.imageUrl;
+
+  useEffect(() => {
+    if (!isLoaded || !user || !showModal) return;
+
+    reset({
+      firstName: user.firstName ?? "",
+      lastName: user.lastName ?? "",
+      phoneNumber:
+        (user.publicMetadata?.phoneNumber as string | undefined) ?? "",
+    });
+  }, [isLoaded, user, showModal, reset]);
+
+  const onSubmit = async (data: userSchemaDetails) => {
+    console.log("Update user with:", data);
+    if (!user) return;
+
+    try {
+      await user.update({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        unsafeMetadata: {
+          ...(user.unsafeMetadata || {}),
+          phoneNumber: data.phoneNumber,
+        }
+        },
+      );
+
+      setShowModal(false);
+      reset(data);
+    } catch (err) {
+      console.error("Error updating Clerk user", err);
+    }
   };
 
   return (
@@ -862,7 +858,7 @@ const ModalComponent = ({
         <Center className="w-full  top-16">
           <Avatar size="2xl">
             <AvatarImage
-              source={require("@/assets/profile-screens/profile/image.png")}
+              source={{ uri: userImage }}
             />
             <AvatarBadge className="justify-center items-center bg-background-500">
               <Icon as={EditPhotoIcon} />
@@ -871,7 +867,7 @@ const ModalComponent = ({
         </Center>
         <ModalBody className="px-10 py-6">
           <VStack space="2xl">
-            
+
             <FormControl
               isInvalid={!!errors.firstName || isNameFocused}
               className="w-[47%]"
@@ -958,7 +954,7 @@ const ModalComponent = ({
                 </FormControlErrorText>
               </FormControlError>
             </FormControl>
-            <FormControl className="w-[47%]" isInvalid={!!errors.gender}>
+            {/* <FormControl className="w-[47%]" isInvalid={!!errors.gender}>
               <FormControlLabel className="mb-2">
                 <FormControlLabelText>Gender</FormControlLabelText>
               </FormControlLabel>
@@ -1001,7 +997,7 @@ const ModalComponent = ({
                   {errors?.gender?.message}
                 </FormControlErrorText>
               </FormControlError>
-            </FormControl>
+            </FormControl> */}
 
             <FormControl className="w-[47%]" isInvalid={!!errors.phoneNumber}>
               <FormControlLabel className="mb-2">
@@ -1033,15 +1029,15 @@ const ModalComponent = ({
                           <SelectDragIndicatorWrapper>
                             <SelectDragIndicator />
                           </SelectDragIndicatorWrapper>
-                          <SelectItem label="93" value="93" />
-                          <SelectItem label="155" value="155" />
-                          <SelectItem label="1-684" value="-1684" />
+                          <SelectItem label="Switzerland" value="+41" />
+                          <SelectItem label="USA" value="+1" />
+                          <SelectItem label="Germany" value="+49" />
                         </SelectContent>
                       </SelectPortal>
                     </Select>
                     <Input className="flex-1">
                       <InputField
-                        placeholder="89867292632"
+                        placeholder="079655521"
                         type="text"
                         value={value}
                         onChangeText={onChange}
@@ -1061,7 +1057,7 @@ const ModalComponent = ({
                 </FormControlErrorText>
               </FormControlError>
             </FormControl>
-            <FormControl
+            {/* <FormControl
               className="w-[47%]"
               isInvalid={(!!errors.city || isEmailFocused) && !!errors.city}
             >
@@ -1246,11 +1242,9 @@ const ModalComponent = ({
                   {errors?.zipcode?.message}
                 </FormControlErrorText>
               </FormControlError>
-            </FormControl>
+            </FormControl> */}
             <Button
-              onPress={() => {
-                handleSubmit(onSubmit)();
-              }}
+              onPress={handleSubmit(onSubmit)}
               className="flex-1 p-2"
             >
               <ButtonText>Save Changes</ButtonText>
