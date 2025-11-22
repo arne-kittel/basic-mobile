@@ -84,8 +84,8 @@ export default function MyEvents() {
 
   return (
     <VStack className='p-4 pb-0 md:px-10 md:pt-6 md:pb-0 h-full w-full self-center mb-20 md:mb-2 bg-white'>
-      <Heading size='xl' className='mb-4 font-roboto'>
-        You're upcoming events
+      <Heading size='2xl' className='mb-4 font-roboto'>
+        Bookings
       </Heading>
       <HStack space='2xl' className='h-full w-full flex-1'>
         <ScrollView className='max-w-[900px] flex-1 md_mb-2'>
