@@ -142,6 +142,7 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
         )}
       </View>
 
+
       {/* Event Details */}
       <VStack className='p-4 bg-white' space='sm'>
         <Text className='text-xl font-semibold text-gray-900'>
