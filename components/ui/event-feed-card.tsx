@@ -7,15 +7,17 @@ import { Button, ButtonText } from '@/components/ui/button';
 import { SnBEvent, getEventThumbnail } from '@/app/types/snb_event';
 import { useAuth } from '@clerk/clerk-expo';
 import { useState } from 'react';
-import { View, Dimensions, LayoutChangeEvent } from 'react-native';
+import { View, Dimensions, LayoutChangeEvent, Alert } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
+
+// ⭐ NEU: Stripe
+import { useStripe } from '@stripe/stripe-react-native';
 
 interface EventFeedCardProps {
   event: SnBEvent;
   onParticipateSuccess: () => void;
 }
 
-// Saubere Typ-Definition für Media Items
 type MediaItem = {
   uri: string | null;
   type: 'image' | 'video' | 'gif';
@@ -31,17 +33,81 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
   const [carouselWidth, setCarouselWidth] = useState(SCREEN_WIDTH);
   const { getToken } = useAuth();
 
+  // ⭐ NEU: Stripe-Hooks
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+
+  // ⭐ NEU: init PaymentSheet über dein Backend
+  const initializePaymentSheet = async (token: string) => {
+    // Betrag: 50 CHF → 5000 Rappen
+    const amountInRappen = 5000;
+
+    const response = await fetch(`${API_BASE_URL}/events/create-payment-intent`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        amount: amountInRappen,
+        currency: 'chf',
+        event_id: event.id,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to create payment intent');
+    }
+
+    const { clientSecret } = await response.json();
+
+    if (!clientSecret) {
+      throw new Error('Missing clientSecret from backend');
+    }
+
+    const { error } = await initPaymentSheet({
+      paymentIntentClientSecret: clientSecret,
+      merchantDisplayName: 'SnB Club', // Name, der im PaymentSheet angezeigt wird
+      // optional: defaultBillingDetails, appearance, etc.
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  };
+
   const handleParticipate = async () => {
     try {
       setIsParticipating(true);
+
       const token = await getToken();
-      
       if (!token) {
-        console.warn("❌ Kein Token vorhanden");
+        console.warn('❌ Kein Token vorhanden');
+        Alert.alert('Fehler', 'Du musst eingeloggt sein, um teilzunehmen.');
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/events/participate`, {
+      // 1️⃣ PaymentSheet vorbereiten
+      await initializePaymentSheet(token);
+
+      // 2️⃣ PaymentSheet anzeigen
+      const { error } = await presentPaymentSheet();
+
+      if (error) {
+        if (error.code === 'Canceled') {
+          // User hat abgebrochen → keine Teilnahme
+          console.log('ℹ️ Zahlung abgebrochen');
+          return;
+        }
+        console.error('❌ Fehler im PaymentSheet:', error);
+        Alert.alert('Zahlung fehlgeschlagen', error.message);
+        return;
+      }
+
+      console.log('✅ Zahlung erfolgreich für Event:', event.title);
+
+      // 3️⃣ Erst NACH erfolgreicher Zahlung beim Event registrieren
+      const participateResponse = await fetch(`${API_BASE_URL}/events/participate`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -50,30 +116,34 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
         body: JSON.stringify({ event_id: event.id }),
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        console.warn("❌ Backend response:", data.error || "Unknown error");
+      if (!participateResponse.ok) {
+        const data = await participateResponse.json().catch(() => ({}));
+        console.warn("❌ Backend response (participate):", data.error || "Unknown error");
         throw new Error(data.error || "Failed to participate");
       }
 
       console.log("✅ Erfolgreich für Event registriert:", event.title);
       onParticipateSuccess();
-    } catch (error) {
-      console.error("❌ Fehler beim Registrieren:", error);
+      Alert.alert('Erfolg', 'Du bist jetzt für das Event angemeldet 🎉');
+    } catch (error: any) {
+      console.error('❌ Fehler im Join/Payment-Flow:', error);
+      if (!error?.message?.includes('Canceled')) {
+        Alert.alert('Fehler', error.message || 'Es ist ein Fehler aufgetreten.');
+      }
     } finally {
       setIsParticipating(false);
     }
   };
 
-  // Media-Items für Carousel vorbereiten mit explizitem Typ
-  const mediaItems: MediaItem[] = event.media && event.media.length > 0 
-    ? event.media.map(m => ({ 
-        uri: m.sasUrl, 
-        type: (m.type as MediaItem['type']) 
-      }))
-    : [{ uri: null, type: 'image' as const }];
+  // Media-Items für Carousel
+  const mediaItems: MediaItem[] =
+    event.media && event.media.length > 0
+      ? event.media.map(m => ({
+          uri: m.sasUrl,
+          type: (m.type as MediaItem['type']),
+        }))
+      : [{ uri: null, type: 'image' as const }];
 
-  // Datum formatieren
   const eventDate = new Date(event.start_time).toLocaleDateString('de-DE', {
     weekday: 'short',
     day: '2-digit',
@@ -86,7 +156,6 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
     minute: '2-digit',
   });
 
-  // Messe die tatsächliche Breite des Containers
   const handleLayout = (event: LayoutChangeEvent) => {
     const { width } = event.nativeEvent.layout;
     if (width > 0) {
@@ -114,25 +183,22 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
           loop={false}
           enabled={mediaItems.length > 1}
         />
-        
-        {/* Media Counter & Pagination Dots */}
+
         {mediaItems.length > 1 && (
           <View className='absolute inset-0 pointer-events-none'>
-            {/* Counter Badge (oben rechts) */}
             <View className='absolute top-2 right-2 bg-black/60 px-2 py-1 rounded-xl'>
               <Text className='text-white text-xs font-semibold'>
                 {currentIndex + 1}/{mediaItems.length}
               </Text>
             </View>
-            
-            {/* Pagination Dots (unten) */}
+
             <View className='absolute bottom-2 left-0 right-0 flex-row justify-center items-center gap-1.5'>
               {mediaItems.map((_, index) => (
                 <View
                   key={index}
                   className={`rounded-full ${
-                    index === currentIndex 
-                      ? 'w-2 h-2 bg-white' 
+                    index === currentIndex
+                      ? 'w-2 h-2 bg-white'
                       : 'w-1.5 h-1.5 bg-white/50'
                   }`}
                 />
@@ -141,7 +207,6 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
           </View>
         )}
       </View>
-
 
       {/* Event Details */}
       <VStack className='p-4 bg-white' space='sm'>
@@ -167,8 +232,7 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
               📍 {event.location}
             </Text>
           )}
-          
-          {/* Teilnehmer-Informationen */}
+
           {event.participant_count !== undefined && (
             <Text className='text-sm text-gray-600 font-medium'>
               {event.max_participants ? (
@@ -182,7 +246,7 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
               )}
             </Text>
           )}
-          
+
           {event.participant_count === undefined && event.max_participants && (
             <Text className='text-sm text-gray-600'>
               👥 Max {event.max_participants} participants
@@ -196,7 +260,7 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
           isDisabled={isParticipating}
         >
           <ButtonText>
-            {isParticipating ? 'Joining...' : 'Join Event'}
+            {isParticipating ? 'Processing...' : 'Join Event – 50 CHF'}
           </ButtonText>
         </Button>
       </VStack>
