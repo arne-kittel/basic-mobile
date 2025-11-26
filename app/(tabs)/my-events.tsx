@@ -17,6 +17,7 @@ import { SnBEvent } from '@/app/types/snb_event';
 import { useFocusEffect } from '@react-navigation/native';
 
 const tempUri = require("@/assets/images/golf.jpg");
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 
 export default function MyEvents() {
@@ -37,13 +38,13 @@ export default function MyEvents() {
             }
             
             // ✅ WICHTIG: include_media=true hinzugefügt!
-            console.log("🌐 URL:", "http://192.168.189.51:5050/api/events/my-events?include_media=true");
+            console.log("🌐 URL:", `${API_BASE_URL}/events/my-events?include_media=true`);
             console.log("📨 Headers:", {
                 Authorization: `Bearer ${token}`,
                 "Content-Type": "application/json",
             });
             
-            const response = await fetch("http://192.168.189.51:5050/api/events/my-events?include_media=true", {
+            const response = await fetch(`${API_BASE_URL}/events/my-events?include_media=true`, {
                 method: "GET",
                 headers: {
                     Authorization: `Bearer ${token}`,

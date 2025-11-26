@@ -18,6 +18,8 @@ type MediaItem = {
 
 const FALLBACK_IMAGE = require("@/assets/images/golf.jpg");
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+
 
 export default function MyEventsCard({event, onWithdrawSuccess}: {event: SnBEvent, onWithdrawSuccess: () => void}) {
     const { getToken } = useAuth();
@@ -35,7 +37,7 @@ export default function MyEventsCard({event, onWithdrawSuccess}: {event: SnBEven
           return;
         }
         
-        const response = await fetch(`http://192.168.189.51:5050/api/events/withdraw`, {
+        const response = await fetch(`${API_BASE_URL}/events/withdraw`, {
             method: "DELETE",
             headers: {
                 Authorization: `Bearer ${token}`,

@@ -9,7 +9,9 @@ import { useAuth } from '@clerk/clerk-expo';
 import { useFocusEffect } from '@react-navigation/native';
 import { SnBEvent } from '@/app/types/snb_event';
 
-const API_BASE_URL = "http://192.168.189.51:5050/api";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+
+
 
 export default function EventFeed() {
   const [events, setEvents] = useState<SnBEvent[]>([]);

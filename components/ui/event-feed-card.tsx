@@ -23,7 +23,7 @@ type MediaItem = {
   type: 'image' | 'video' | 'gif';
 };
 
-const API_BASE_URL = "http://192.168.189.51:5050/api";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 const FALLBACK_IMAGE = require("@/assets/images/golf.jpg");
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -139,9 +139,9 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
   const mediaItems: MediaItem[] =
     event.media && event.media.length > 0
       ? event.media.map(m => ({
-          uri: m.sasUrl,
-          type: (m.type as MediaItem['type']),
-        }))
+        uri: m.sasUrl,
+        type: (m.type as MediaItem['type']),
+      }))
       : [{ uri: null, type: 'image' as const }];
 
   const eventDate = new Date(event.start_time).toLocaleDateString('de-DE', {
@@ -196,11 +196,10 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
               {mediaItems.map((_, index) => (
                 <View
                   key={index}
-                  className={`rounded-full ${
-                    index === currentIndex
+                  className={`rounded-full ${index === currentIndex
                       ? 'w-2 h-2 bg-white'
                       : 'w-1.5 h-1.5 bg-white/50'
-                  }`}
+                    }`}
                 />
               ))}
             </View>
@@ -210,6 +209,9 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
 
       {/* Event Details */}
       <VStack className='p-4 bg-white' space='sm'>
+        <Text className='text-sm text-gray-500'>
+          {eventDate}
+        </Text>
         <Text className='text-xl font-semibold text-gray-900'>
           {event.title}
         </Text>
@@ -221,9 +223,6 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
         )}
 
         <VStack space='xs' className='mt-2'>
-          <Text className='text-sm text-gray-500'>
-            📅 {eventDate}
-          </Text>
           <Text className='text-sm text-gray-500'>
             🕐 {eventTime}
           </Text>
