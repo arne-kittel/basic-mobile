@@ -4,11 +4,12 @@ import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Button, ButtonText } from '@/components/ui/button';
-import { SnBEvent, getEventThumbnail } from '@/app/types/snb_event';
-import { useAuth } from '@clerk/clerk-expo';
+import { SnBEvent } from '@/app/types/snb_event';
+import { useAuth, useUser } from '@clerk/clerk-expo';
 import { useState } from 'react';
 import { View, Dimensions, LayoutChangeEvent, Alert } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
+import { MiniAvatarRow } from '@/components/ui/mini-avatar-row';
 
 // ⭐ NEU: Stripe
 import { useStripe } from '@stripe/stripe-react-native';
@@ -32,6 +33,7 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
   const [currentIndex, setCurrentIndex] = useState(0);
   const [carouselWidth, setCarouselWidth] = useState(SCREEN_WIDTH);
   const { getToken } = useAuth();
+  const { user } = useUser();
 
   // ⭐ NEU: Stripe-Hooks
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
@@ -67,8 +69,7 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
 
     const { error } = await initPaymentSheet({
       paymentIntentClientSecret: clientSecret,
-      merchantDisplayName: 'SnB Club', // Name, der im PaymentSheet angezeigt wird
-      // optional: defaultBillingDetails, appearance, etc.
+      merchantDisplayName: 'SnB Club',
     });
 
     if (error) {
@@ -95,7 +96,6 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
 
       if (error) {
         if (error.code === 'Canceled') {
-          // User hat abgebrochen → keine Teilnahme
           console.log('ℹ️ Zahlung abgebrochen');
           return;
         }
@@ -113,7 +113,10 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ event_id: event.id }),
+        body: JSON.stringify({
+          event_id: event.id,
+          avatar_url: user?.imageUrl ?? null
+        }),
       });
 
       if (!participateResponse.ok) {
@@ -162,6 +165,16 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
       setCarouselWidth(width);
     }
   };
+
+  // 🔹 Avatar-URLs aus participants_media (Clerk-Profilbilder)
+  const avatarUrls =
+    event.participants_media?.map((p) => p.url).filter(Boolean) ??
+    [
+      "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg",
+      "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg",
+    ];
+
+  console.log(event.participants, event.participants_media)
 
   return (
     <Box className='rounded-lg border border-gray-200 overflow-hidden bg-white shadow-sm'>
@@ -250,6 +263,13 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
             <Text className='text-sm text-gray-600'>
               👥 Max {event.max_participants} participants
             </Text>
+          )}
+
+          {/* 🔹 Mini-Avatare der Teilnehmer */}
+          {avatarUrls.length > 0 && (
+            <HStack className="mt-1 items-center">
+              <MiniAvatarRow avatarUrls={avatarUrls} />
+            </HStack>
           )}
         </VStack>
 

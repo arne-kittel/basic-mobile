@@ -12,7 +12,6 @@ import { SnBEvent } from '@/app/types/snb_event';
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 
-
 export default function EventFeed() {
   const [events, setEvents] = useState<SnBEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,7 +31,8 @@ export default function EventFeed() {
       }
 
       // Mit include_media=true Parameter, um Bilder zu laden
-      const url = `${API_BASE_URL}/events/?include_media=true`;
+      const url = `${API_BASE_URL}/events/?include_media=true&include_participants=true`;
+
       console.log("🌍 URL:", url);
 
       const response = await fetch(url, {

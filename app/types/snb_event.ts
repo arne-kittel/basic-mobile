@@ -2,6 +2,13 @@
 
 export type MediaType = "image" | "video" | "audio" | "document";
 
+export interface EventParticipant {
+  id: string;
+  clerkUserId: string;
+  displayName: string;
+  imageUrl: string;
+}
+
 export interface EventMedia {
   id: number;
   type: MediaType;
@@ -32,6 +39,8 @@ export interface SnBEvent {
   media?: EventMedia[];           // Optional, nur wenn include_media=true
   participant_count?: number;     // Optional, nur wenn include_participants=true
   available_spots?: number | null; // Optional, nur wenn include_participants=true (null = unlimited)
+  participants_media?: { url: string }[];
+  participants?: EventParticipant[];
 }
 
 // Helper-Funktion, um das erste Bild eines Events zu bekommen
