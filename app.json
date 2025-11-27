@@ -4,13 +4,13 @@
     "slug": "basic-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icons/icon.png",
+    "icon": "./assets/logos/3x/snb_logo_light3x.png",
     "scheme": "basicmobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
 
     "splash": {
-      "image": "./assets/icons/splash-icon.png",
+      "image": "./assets/logos/3x/snb_logo_light3x.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -21,7 +21,8 @@
 
       "usesApplePay": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Erlaube dieser App, deine Kamera zu benutzen."
       }
     },
 
@@ -49,6 +50,12 @@
           "merchantIdentifier": "merchant.snb.club",
           "enableGooglePay": true,
           "applePay": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Erlaube dieser App, auf deine Fotos zuzugreifen."
         }
       ]
     ],

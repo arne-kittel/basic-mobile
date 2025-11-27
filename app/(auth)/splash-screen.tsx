@@ -11,8 +11,8 @@ import { useRouter } from 'expo-router';
 export default function StartScreen() {
   const colorScheme = useColorScheme();
 
-  const imageSource = require("@/assets/logos/snb_logo.png")
-
+  const imageSource = require("@/assets/logos/3x/snb_logo_light3x.png")
+  
   return (
     <SafeAreaView className='flex-1 bg-white'>
       <VStack
