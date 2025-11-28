@@ -1,33 +1,77 @@
-import { VStack } from '@/components/ui/vstack'
-import { Image } from '@/components/ui/image'
-import { Text } from '@/components/ui/text'
-import { Heading } from '@/components/ui/heading'
-import { Button, ButtonText } from '@/components/ui/button'
-import { HStack } from '@/components/ui/hstack'
-import { SnBEvent } from '@/app/types/snb_event'
-import { useAuth } from '@clerk/clerk-expo'
-import { useState } from 'react'
-import { View, Dimensions, LayoutChangeEvent } from 'react-native'
-import Carousel from 'react-native-reanimated-carousel'
-import { MiniAvatarRow } from '@/components/ui/mini-avatar-row'
+import { VStack } from '@/components/ui/vstack';
+import { Image } from '@/components/ui/image';
+import { Text } from '@/components/ui/text';
+import { Heading } from '@/components/ui/heading';
+import { Button, ButtonText } from '@/components/ui/button';
+import { HStack } from '@/components/ui/hstack';
+import { SnBEvent } from '@/app/types/snb_event';
+import { useAuth } from '@clerk/clerk-expo';
+import { useEffect, useState } from 'react';
+import { View, Dimensions, LayoutChangeEvent } from 'react-native';
+import Carousel from 'react-native-reanimated-carousel';
+import { MiniAvatarRow } from '@/components/ui/mini-avatar-row';
+import { VideoView, useVideoPlayer } from 'expo-video';
+import { useIsFocused } from '@react-navigation/native';
 
-// Saubere Typ-Definition für Media Items
 type MediaItem = {
   uri: string | null;
   type: 'image' | 'video' | 'gif';
 };
 
-const FALLBACK_IMAGE = require("@/assets/images/golf.jpg");
+const FALLBACK_IMAGE = require('@/assets/images/golf.jpg');
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+
+// 🔹 Video-Item: spielt nur, wenn Slide aktiv UND Screen fokussiert
+type EventVideoItemProps = {
+  uri: string;
+  isActive: boolean;
+};
+
+const EventVideoItem = ({ uri, isActive }: EventVideoItemProps) => {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = true;
+    p.muted = true;
+    p.volume = 1.0;
+  });
+
+  const isScreenFocused = useIsFocused();
+
+  useEffect(() => {
+    if (!player) return;
+
+    const shouldPlay = isActive && isScreenFocused;
+
+    if (shouldPlay) {
+      player.muted = false;
+      player.play();
+    } else {
+      player.pause();
+      player.muted = true;
+    }
+  }, [isActive, isScreenFocused, player]);
+
+  return (
+    <VideoView
+      style={{ width: '100%', height: '100%' }}
+      player={player}
+      nativeControls
+      contentFit="cover"
+      allowsFullscreen
+      allowsPictureInPicture
+    />
+  );
+};
+
+type MyEventsCardProps = {
+  event: SnBEvent;
+  onWithdrawSuccess: () => void;
+};
 
 export default function MyEventsCard({
   event,
   onWithdrawSuccess,
-}: {
-  event: SnBEvent;
-  onWithdrawSuccess: () => void;
-}) {
+}: MyEventsCardProps) {
   const { getToken } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [carouselWidth, setCarouselWidth] = useState(SCREEN_WIDTH);
@@ -53,8 +97,6 @@ export default function MyEventsCard({
           },
           body: JSON.stringify({
             event_id: event.id,
-            // optional: cancellation_fee hier mitgeben, falls dein Backend das unterstützt
-            // cancellation_fee: 1000, // in Rappen, z.B. 1000 = 10.00 CHF
           }),
         }
       );
@@ -68,36 +110,31 @@ export default function MyEventsCard({
         throw new Error(data?.error || 'Failed to cancel event');
       }
 
-      if (onWithdrawSuccess) {
-        onWithdrawSuccess();
-      }
+      onWithdrawSuccess();
     } catch (error) {
       console.error('❌ Fehler in handleWithdraw:', error);
     }
   };
 
-  // Media-Items für Carousel vorbereiten mit explizitem Typ
   const mediaItems: MediaItem[] =
     event.media && event.media.length > 0
-      ? event.media.map((m) => ({
-          uri: m.sasUrl,
-          type: m.type as MediaItem['type'],
-        }))
+      ? event.media.map((m) => {
+          let type: MediaItem['type'] = 'image';
+          const rawType = (m.type || '').toLowerCase();
+
+          if (rawType.startsWith('video')) {
+            type = 'video';
+          } else if (rawType === 'gif' || rawType === 'image/gif') {
+            type = 'gif';
+          }
+
+          return {
+            uri: m.sasUrl,
+            type,
+          };
+        })
       : [{ uri: null, type: 'image' as const }];
 
-  // DEBUG: Prüfe was geladen wird
-  console.log('🖼️ [MyEventsCard] Event ID:', event.id);
-  console.log('🖼️ [MyEventsCard] Media Array:', event.media);
-  console.log('🖼️ [MyEventsCard] Media Count:', event.media?.length || 0);
-  console.log('🖼️ [MyEventsCard] Media Items:', mediaItems);
-  if (mediaItems.length > 0 && mediaItems[0].uri) {
-    console.log(
-      '🖼️ [MyEventsCard] First URI:',
-      mediaItems[0].uri.substring(0, 80) + '...'
-    );
-  }
-
-  // Messe die tatsächliche Breite des Containers
   const handleLayout = (eventLayout: LayoutChangeEvent) => {
     const { width } = eventLayout.nativeEvent.layout;
     if (width > 0) {
@@ -105,7 +142,6 @@ export default function MyEventsCard({
     }
   };
 
-  // 🔹 Avatar-URLs aus participants_media (Clerk-Profilbilder)
   const avatarUrls =
     event.participants_media?.map((p) => p.url).filter(Boolean) ?? [];
 
@@ -125,29 +161,54 @@ export default function MyEventsCard({
             height={256}
             data={mediaItems}
             onSnapToItem={(index) => setCurrentIndex(index)}
-            renderItem={({ item }: { item: MediaItem }) => (
-              <Image
-                source={item.uri ? { uri: item.uri } : FALLBACK_IMAGE}
-                alt={event.title}
-                className="w-full h-full"
-                resizeMode="cover"
-              />
-            )}
+            renderItem={({
+              item,
+              index,
+            }: {
+              item: MediaItem;
+              index: number;
+            }) => {
+              if (!item.uri) {
+                return (
+                  <Image
+                    source={FALLBACK_IMAGE}
+                    alt={event.title}
+                    className="w-full h-full"
+                    resizeMode="cover"
+                  />
+                );
+              }
+
+              if (item.type === 'video') {
+                return (
+                  <EventVideoItem
+                    uri={item.uri}
+                    isActive={index === currentIndex}
+                  />
+                );
+              }
+
+              return (
+                <Image
+                  source={{ uri: item.uri }}
+                  alt={event.title}
+                  className="w-full h-full"
+                  resizeMode="cover"
+                />
+              );
+            }}
             loop={false}
             enabled={mediaItems.length > 1}
           />
 
-          {/* Media Counter & Pagination Dots */}
           {mediaItems.length > 1 && (
             <View className="absolute inset-0 pointer-events-none">
-              {/* Counter Badge (oben rechts) */}
               <View className="absolute top-2 right-2 bg-black/60 px-2 py-1 rounded-xl">
                 <Text className="text-white text-xs font-semibold">
                   {currentIndex + 1}/{mediaItems.length}
                 </Text>
               </View>
 
-              {/* Pagination Dots (unten) */}
               <View className="absolute bottom-2 left-0 right-0 flex-row justify-center items-center gap-1.5">
                 {mediaItems.map((_, index) => (
                   <View
@@ -184,7 +245,6 @@ export default function MyEventsCard({
               </Text>
             )}
 
-          {/* 🔹 Mini-Avatare der Teilnehmer */}
           {avatarUrls.length > 0 && (
             <HStack className="mt-1 items-center">
               <MiniAvatarRow avatarUrls={avatarUrls} />
@@ -192,9 +252,12 @@ export default function MyEventsCard({
           )}
 
           <VStack className="w-full my-7" space="lg">
-            <Button className="w-full" variant="outline" onPress={handleWithdraw}>
+            <Button
+              className="w-full"
+              variant="outline"
+              onPress={handleWithdraw}
+            >
               <ButtonText className="font-medium">Withdraw</ButtonText>
-              {/* Optional: Button-Label anpassen, z.B. "Stornieren (Gebühr)" */}
             </Button>
           </VStack>
         </VStack>
