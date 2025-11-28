@@ -11,7 +11,7 @@ import { View, Dimensions, LayoutChangeEvent, Alert } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
 import { MiniAvatarRow } from '@/components/ui/mini-avatar-row';
 
-// ⭐ NEU: Stripe
+// ⭐ Stripe
 import { useStripe } from '@stripe/stripe-react-native';
 
 interface EventFeedCardProps {
@@ -35,13 +35,20 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
   const { getToken } = useAuth();
   const { user } = useUser();
 
-  // ⭐ NEU: Stripe-Hooks
+  // ⭐ Stripe-Hooks
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
-  // ⭐ NEU: init PaymentSheet über dein Backend
+  /**
+   * Initialisiert die PaymentSheet und holt alle Infos,
+   * die wir später an das Backend schicken wollen:
+   * - paymentIntentId
+   * - amount
+   * - currency
+   */
   const initializePaymentSheet = async (token: string) => {
-    // Betrag: 50 CHF → 5000 Rappen
+    // Betrag: 50 CHF → 5000 Rappen (kannst du später dynamisch machen)
     const amountInRappen = 5000;
+    const currency = 'chf';
 
     const response = await fetch(`${API_BASE_URL}/events/create-payment-intent`, {
       method: 'POST',
@@ -51,7 +58,7 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
       },
       body: JSON.stringify({
         amount: amountInRappen,
-        currency: 'chf',
+        currency,
         event_id: event.id,
       }),
     });
@@ -61,7 +68,9 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
       throw new Error(errorData.error || 'Failed to create payment intent');
     }
 
-    const { clientSecret } = await response.json();
+    // ⚠️ Erwartet: clientSecret + paymentIntentId (+ optional amount/currency)
+    const { clientSecret, paymentIntentId, amount, currency: responseCurrency } =
+      await response.json();
 
     if (!clientSecret) {
       throw new Error('Missing clientSecret from backend');
@@ -75,6 +84,12 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
     if (error) {
       throw new Error(error.message);
     }
+
+    return {
+      paymentIntentId,
+      amount: amount ?? amountInRappen,
+      currency: responseCurrency ?? currency,
+    };
   };
 
   const handleParticipate = async () => {
@@ -88,8 +103,12 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
         return;
       }
 
-      // 1️⃣ PaymentSheet vorbereiten
-      await initializePaymentSheet(token);
+      // 1️⃣ PaymentSheet vorbereiten + PaymentIntent-Daten holen
+      const {
+        paymentIntentId,
+        amount,
+        currency,
+      } = await initializePaymentSheet(token);
 
       // 2️⃣ PaymentSheet anzeigen
       const { error } = await presentPaymentSheet();
@@ -107,21 +126,31 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
       console.log('✅ Zahlung erfolgreich für Event:', event.title);
 
       // 3️⃣ Erst NACH erfolgreicher Zahlung beim Event registrieren
-      const participateResponse = await fetch(`${API_BASE_URL}/events/participate`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          event_id: event.id,
-          avatar_url: user?.imageUrl ?? null
-        }),
-      });
+      const participateResponse = await fetch(
+        `${API_BASE_URL}/events/participate`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            event_id: event.id,
+            avatar_url: user?.imageUrl ?? null,
+            // ⭐ WICHTIG: diese drei Felder neu hinzufügen
+            payment_intent_id: paymentIntentId,
+            amount,
+            currency,
+          }),
+        }
+      );
 
       if (!participateResponse.ok) {
         const data = await participateResponse.json().catch(() => ({}));
-        console.warn("❌ Backend response (participate):", data.error || "Unknown error");
+        console.warn(
+          "❌ Backend response (participate):",
+          data.error || "Unknown error"
+        );
         throw new Error(data.error || "Failed to participate");
       }
 
@@ -142,9 +171,9 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
   const mediaItems: MediaItem[] =
     event.media && event.media.length > 0
       ? event.media.map(m => ({
-        uri: m.sasUrl,
-        type: (m.type as MediaItem['type']),
-      }))
+          uri: m.sasUrl,
+          type: (m.type as MediaItem['type']),
+        }))
       : [{ uri: null, type: 'image' as const }];
 
   const eventDate = new Date(event.start_time).toLocaleDateString('de-DE', {
@@ -159,8 +188,8 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
     minute: '2-digit',
   });
 
-  const handleLayout = (event: LayoutChangeEvent) => {
-    const { width } = event.nativeEvent.layout;
+  const handleLayout = (eventLayout: LayoutChangeEvent) => {
+    const { width } = eventLayout.nativeEvent.layout;
     if (width > 0) {
       setCarouselWidth(width);
     }
@@ -174,7 +203,7 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
       "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg",
     ];
 
-  console.log(event.participants, event.participants_media)
+  console.log(event.participants, event.participants_media);
 
   return (
     <Box className='rounded-lg border border-gray-200 overflow-hidden bg-white shadow-sm'>
@@ -209,10 +238,11 @@ export default function EventFeedCard({ event, onParticipateSuccess }: EventFeed
               {mediaItems.map((_, index) => (
                 <View
                   key={index}
-                  className={`rounded-full ${index === currentIndex
+                  className={`rounded-full ${
+                    index === currentIndex
                       ? 'w-2 h-2 bg-white'
                       : 'w-1.5 h-1.5 bg-white/50'
-                    }`}
+                  }`}
                 />
               ))}
             </View>
