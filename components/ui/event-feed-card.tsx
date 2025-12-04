@@ -1,3 +1,4 @@
+// src/app/components/event-feed-card.tsx
 import { Box } from '@/components/ui/box';
 import { Image } from '@/components/ui/image';
 import { Text } from '@/components/ui/text';
@@ -6,21 +7,21 @@ import { HStack } from '@/components/ui/hstack';
 import { Button, ButtonText } from '@/components/ui/button';
 import { SnBEvent } from '@/app/types/snb_event';
 import { useAuth, useUser } from '@clerk/clerk-expo';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Dimensions, LayoutChangeEvent, Alert } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
 import { MiniAvatarRow } from '@/components/ui/mini-avatar-row';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useIsFocused } from '@react-navigation/native';
-
-// ⭐ Stripe
 import { useStripe } from '@stripe/stripe-react-native';
 
-interface EventFeedCardProps {
+import EventServicesSheet, {
+  EventOption,
+} from '../../components/ui/event-services-sheet';
+
+export interface EventFeedCardProps {
   event: SnBEvent;
   onParticipateSuccess: () => void;
-  // ✅ neu: wird vom Screen gesetzt, um zu wissen,
-  // welche Card im Feed gerade "im Fokus" ist
   isActiveCard?: boolean;
 }
 
@@ -31,7 +32,6 @@ type MediaItem = {
 
 type EventVideoItemProps = {
   uri: string;
-  // Slide aktiv UND Card im Feed aktiv
   isActive: boolean;
 };
 
@@ -39,11 +39,11 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 const FALLBACK_IMAGE = require('@/assets/images/golf.jpg');
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// 🔹 Einzelnes Video im Carousel
+// Video im Carousel
 const EventVideoItem = ({ uri, isActive }: EventVideoItemProps) => {
   const player = useVideoPlayer(uri, (p) => {
     p.loop = true;
-    p.muted = true; // Start muted
+    p.muted = true;
     p.volume = 1.0;
   });
 
@@ -78,7 +78,7 @@ const EventVideoItem = ({ uri, isActive }: EventVideoItemProps) => {
 export default function EventFeedCard({
   event,
   onParticipateSuccess,
-  isActiveCard = true, // Default, falls Prop nicht gesetzt wird
+  isActiveCard = true,
 }: EventFeedCardProps) {
   const [isParticipating, setIsParticipating] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -86,131 +86,22 @@ export default function EventFeedCard({
   const { getToken } = useAuth();
   const { user } = useUser();
 
-  // ⭐ Stripe-Hooks
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
-  const initializePaymentSheet = async (token: string) => {
-    const amountInRappen = 5000;
-    const currency = 'chf';
+  // Overlay-/Options-State
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [isOptionsLoading, setIsOptionsLoading] = useState(false);
+  const [isBooking, setIsBooking] = useState(false);
+  const [options, setOptions] = useState<EventOption[]>([]);
+  const [selectedOptionIds, setSelectedOptionIds] = useState<number[]>([]);
 
-    const response = await fetch(
-      `${API_BASE_URL}/events/create-payment-intent`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: amountInRappen,
-          currency,
-          event_id: event.id,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to create payment intent');
-    }
-
-    const {
-      clientSecret,
-      paymentIntentId,
-      amount,
-      currency: responseCurrency,
-    } = await response.json();
-
-    if (!clientSecret) {
-      throw new Error('Missing clientSecret from backend');
-    }
-
-    const { error } = await initPaymentSheet({
-      paymentIntentClientSecret: clientSecret,
-      merchantDisplayName: 'SnB Club',
-    });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return {
-      paymentIntentId,
-      amount: amount ?? amountInRappen,
-      currency: responseCurrency ?? currency,
-    };
-  };
-
-  const handleParticipate = async () => {
-    try {
-      setIsParticipating(true);
-
-      const token = await getToken();
-      if (!token) {
-        console.warn('❌ Kein Token vorhanden');
-        Alert.alert('Fehler', 'Du musst eingeloggt sein, um teilzunehmen.');
-        return;
-      }
-
-      const { paymentIntentId, amount, currency } =
-        await initializePaymentSheet(token);
-
-      const { error } = await presentPaymentSheet();
-
-      if (error) {
-        if (error.code === 'Canceled') {
-          console.log('ℹ️ Zahlung abgebrochen');
-          return;
-        }
-        console.error('❌ Fehler im PaymentSheet:', error);
-        Alert.alert('Zahlung fehlgeschlagen', error.message);
-        return;
-      }
-
-      console.log('✅ Zahlung erfolgreich für Event:', event.title);
-
-      const participateResponse = await fetch(
-        `${API_BASE_URL}/events/participate`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            event_id: event.id,
-            avatar_url: user?.imageUrl ?? null,
-            payment_intent_id: paymentIntentId,
-            amount,
-            currency,
-          }),
-        }
-      );
-
-      if (!participateResponse.ok) {
-        const data = await participateResponse.json().catch(() => ({}));
-        console.warn(
-          '❌ Backend response (participate):',
-          data.error || 'Unknown error'
-        );
-        throw new Error(data.error || 'Failed to participate');
-      }
-
-      console.log('✅ Erfolgreich für Event registriert:', event.title);
-      onParticipateSuccess();
-      Alert.alert('Erfolg', 'Du bist jetzt für das Event angemeldet 🎉');
-    } catch (error: any) {
-      console.error('❌ Fehler im Join/Payment-Flow:', error);
-      if (!error?.message?.includes('Canceled')) {
-        Alert.alert(
-          'Fehler',
-          error.message || 'Es ist ein Fehler aufgetreten.'
-        );
-      }
-    } finally {
-      setIsParticipating(false);
-    }
-  };
+  // 🔑 Merkt sich das Client Secret und die User Event ID des PaymentIntents
+  const [paymentClientSecret, setPaymentClientSecret] = useState<string | null>(
+    null
+  );
+  const [currentUserEventId, setCurrentUserEventId] = useState<number | null>(
+    null
+  );
 
   const mediaItems: MediaItem[] =
     event.media && event.media.length > 0
@@ -256,7 +147,291 @@ export default function EventFeedCard({
       'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg',
     ];
 
-  console.log(event.participants, event.participants_media);
+  // Optionen vom Backend holen
+  const fetchOptions = async () => {
+    setIsOptionsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/events/${event.id}/options`);
+
+      if (!res.ok) {
+        if (res.status === 404) {
+          Alert.alert(
+            'Fehler',
+            'Für dieses Event sind noch keine Leistungen konfiguriert.'
+          );
+          return;
+        }
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(
+          errData.error ||
+            `Fehler beim Laden der Leistungen (${res.status})`
+        );
+      }
+
+      const data: EventOption[] = await res.json();
+      const active = data.filter((o) => o.is_active !== false);
+      setOptions(active);
+
+      // 🔹 Standard: alle optionalen Leistungen (TRAVEL/TICKET) aktiv setzen
+      setSelectedOptionIds(
+        active
+          .filter((o) => o.is_selectable) // nur wählbare Optionen
+          .map((o) => o.id)
+      );
+
+      // Falls vorher ein PaymentIntent existierte → verwerfen
+      setPaymentClientSecret(null);
+      setCurrentUserEventId(null);
+    } catch (e: any) {
+      console.error('Fehler beim Laden der Optionen:', e);
+      Alert.alert(
+        'Fehler',
+        e?.message || 'Leistungen konnten nicht geladen werden.'
+      );
+    } finally {
+      setIsOptionsLoading(false);
+    }
+  };
+
+  // 🆕 Funktion zum Canceln eines PaymentIntents auf dem Backend
+  const cancelPaymentIntent = async (userEventId: number) => {
+    try {
+      console.log(`🔄 Canceling PaymentIntent for UserEvent ID: ${userEventId}`);
+      const token = await getToken();
+      if (!token) {
+        console.warn('⚠️ Kein Token verfügbar für Cancel-Request');
+        return;
+      }
+
+      const response = await fetch(
+        `${API_BASE_URL}/user-events/${userEventId}/cancel-payment`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.ok) {
+        console.log('✅ PaymentIntent und UserEvent erfolgreich gecancelt');
+      } else {
+        const data = await response.json().catch(() => ({}));
+        console.warn('⚠️ Fehler beim Canceln:', data.error || response.status);
+      }
+    } catch (error) {
+      console.error('⚠️ Error cancelling payment intent:', error);
+      // Nicht kritisch - weitermachen
+    }
+  };
+
+  const toggleOption = (optionId: number) => {
+    setSelectedOptionIds((prev) => {
+      const next = prev.includes(optionId)
+        ? prev.filter((id) => id !== optionId)
+        : [...prev, optionId];
+
+      // Wenn der User die Auswahl ändert, altes PaymentIntent-Secret verwerfen
+      setPaymentClientSecret(null);
+      setCurrentUserEventId(null);
+      return next;
+    });
+  };
+
+  // Join Event → Overlay öffnen
+  const handleParticipate = async () => {
+    try {
+      setIsParticipating(true);
+
+      const token = await getToken();
+      if (!token) {
+        Alert.alert(
+          'Login erforderlich',
+          'Du musst eingeloggt sein, um teilzunehmen.'
+        );
+        return;
+      }
+
+      await fetchOptions();
+      setShowOptionsModal(true);
+    } catch (e: any) {
+      console.error('Fehler beim Join-Flow (Options öffnen):', e);
+      Alert.alert(
+        'Fehler',
+        e?.message || 'Die Event-Leistungen konnten nicht geladen werden.'
+      );
+    } finally {
+      setIsParticipating(false);
+    }
+  };
+
+  // 🆕 Funktion zum Schließen des Modals mit Cleanup
+  const handleCloseModal = async () => {
+    // Wenn ein PaymentIntent existiert, aber nicht bezahlt wurde, canceln wir ihn
+    if (currentUserEventId && paymentClientSecret) {
+      await cancelPaymentIntent(currentUserEventId);
+    }
+
+    // State zurücksetzen
+    setPaymentClientSecret(null);
+    setCurrentUserEventId(null);
+    setShowOptionsModal(false);
+  };
+
+  // Book im Overlay → Backend-Booking + Stripe
+  const handleConfirmBooking = async () => {
+    try {
+      if (!options.length) {
+        Alert.alert(
+          'Fehler',
+          'Für dieses Event sind keine Leistungen konfiguriert.'
+        );
+        return;
+      }
+
+      const hasClubFee = options.some(
+        (o) => o.type === 'CLUB_FEE' && o.is_required
+      );
+      if (!hasClubFee) {
+        Alert.alert(
+          'Konfigurationsfehler',
+          'Dieses Event hat keine Club Fee konfiguriert. Bitte kontaktiere den Veranstalter.'
+        );
+        return;
+      }
+
+      const token = await getToken();
+      if (!token) {
+        Alert.alert(
+          'Login erforderlich',
+          'Du musst eingeloggt sein, um teilzunehmen.'
+        );
+        return;
+      }
+
+      setIsBooking(true);
+
+      let clientSecret = paymentClientSecret;
+
+      // 🔹 Falls wir noch keinen PaymentIntent haben → neuen via /book erzeugen
+      if (!clientSecret) {
+        // Falls ein alter PaymentIntent existiert, canceln wir ihn zuerst
+        if (currentUserEventId) {
+          await cancelPaymentIntent(currentUserEventId);
+        }
+
+        const bookResponse = await fetch(
+          `${API_BASE_URL}/events/${event.id}/book`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              selected_option_ids: selectedOptionIds,
+            }),
+          }
+        );
+
+        if (!bookResponse.ok) {
+          const data = await bookResponse.json().catch(() => ({}));
+          console.warn(
+            '❌ Backend response (book):',
+            data.error || 'Unknown error'
+          );
+          throw new Error(
+            data.error || `Fehler bei der Buchung (${bookResponse.status})`
+          );
+        }
+
+        const bookingData = await bookResponse.json();
+
+        clientSecret =
+          bookingData.stripe_client_secret ||
+          bookingData.clientSecret ||
+          null;
+
+        if (!clientSecret) {
+          throw new Error(
+            'Missing client secret from backend (stripe_client_secret).'
+          );
+        }
+
+        // ClientSecret und User Event ID merken
+        setPaymentClientSecret(clientSecret);
+        setCurrentUserEventId(bookingData.user_event_id || null);
+      }
+
+      // 2) Stripe PaymentSheet initialisieren
+      const { error: initError } = await initPaymentSheet({
+        paymentIntentClientSecret: clientSecret,
+        merchantDisplayName: 'SnB Club',
+      });
+
+      if (initError) {
+        throw new Error(initError.message);
+      }
+
+      // 3) PaymentSheet anzeigen
+      const { error: presentError } = await presentPaymentSheet();
+
+      if (presentError) {
+        if (presentError.code === 'Canceled') {
+          console.log(
+            'ℹ️ Zahlung abgebrochen – PaymentIntent wird auf Backend gecancelt'
+          );
+
+          // 🔹 WICHTIG: Altes PaymentIntent auf Backend canceln
+          if (currentUserEventId) {
+            await cancelPaymentIntent(currentUserEventId);
+          }
+
+          // Secret und User Event ID verwerfen
+          setPaymentClientSecret(null);
+          setCurrentUserEventId(null);
+          return;
+        }
+        console.error('❌ Fehler im PaymentSheet:', presentError);
+        Alert.alert('Zahlung fehlgeschlagen', presentError.message);
+
+        // Bei anderen Fehlern auch aufräumen
+        if (currentUserEventId) {
+          await cancelPaymentIntent(currentUserEventId);
+        }
+        setPaymentClientSecret(null);
+        setCurrentUserEventId(null);
+        return;
+      }
+
+      console.log('✅ Zahlung erfolgreich für Event:', event.title);
+      Alert.alert('Erfolg', 'Du bist jetzt für das Event angemeldet 🎉');
+
+      // Bei Erfolg alles aufräumen
+      setPaymentClientSecret(null);
+      setCurrentUserEventId(null);
+      setShowOptionsModal(false);
+      onParticipateSuccess();
+    } catch (error: any) {
+      console.error('❌ Fehler im Book/Payment-Flow:', error);
+      if (!error?.message?.includes('Canceled')) {
+        Alert.alert(
+          'Fehler',
+          error.message || 'Es ist ein Fehler aufgetreten.'
+        );
+      }
+
+      // Bei Fehler auch aufräumen
+      if (currentUserEventId) {
+        await cancelPaymentIntent(currentUserEventId);
+      }
+      setPaymentClientSecret(null);
+      setCurrentUserEventId(null);
+    } finally {
+      setIsBooking(false);
+    }
+  };
 
   return (
     <Box className="rounded-lg border border-gray-200 overflow-hidden bg-white shadow-sm">
@@ -289,7 +464,6 @@ export default function EventFeedCard({
               return (
                 <EventVideoItem
                   uri={item.uri}
-                  // ✅ nur abspielen, wenn Slide aktiv UND Card aktiv
                   isActive={index === currentIndex && isActiveCard}
                 />
               );
@@ -391,13 +565,25 @@ export default function EventFeedCard({
         <Button
           className="w-full mt-4"
           onPress={handleParticipate}
-          isDisabled={isParticipating}
+          isDisabled={isParticipating || isBooking}
         >
           <ButtonText>
-            {isParticipating ? 'Processing...' : 'Join Event – 50 CHF'}
+            {isParticipating || isBooking ? 'Processing...' : 'Join Event'}
           </ButtonText>
         </Button>
       </VStack>
+
+      {/* Overlay für Leistungen */}
+      <EventServicesSheet
+        visible={showOptionsModal}
+        onClose={handleCloseModal}
+        isLoading={isOptionsLoading}
+        isBooking={isBooking}
+        options={options}
+        selectedOptionIds={selectedOptionIds}
+        onToggleOption={toggleOption}
+        onConfirm={handleConfirmBooking}
+      />
     </Box>
   );
 }
