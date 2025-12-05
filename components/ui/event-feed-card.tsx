@@ -522,7 +522,7 @@ export default function EventFeedCard({
         <VStack space="xs" className="mt-2">
           <Text className="text-sm text-gray-500">🕐 {eventTime}</Text>
           {event.location && (
-            <Text className="text-sm text-gray-500">
+            <Text selectable={true} className="text-sm text-gray-500">
               📍 {event.location}
             </Text>
           )}
